@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Issue Credential — VeriSure</title>
+
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <link rel="stylesheet" href="../assets/css/layout.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+
+<body onload="protect();">
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="brand">VeriSure</div>
+            <nav class="side-links">
+                <a href="./issuer.html">Overview</a>
+                <a href="./issue.html" class="active">Issue Credential</a>
+                <a href="./issued.html">Issued Credentials</a>
+                <a href="./issuer-logs.html">Activity & Logs</a>
+                <a href="./issuer-settings.html">Issuer Settings</a>
+            </nav>
+            <div class="hr"></div>
+            <button class="btn" type="button" onclick="Session.clear()">Logout</button>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <h1>Issue Credentials</h1>
+                    <p>Issue one credential or upload a cohort CSV. No edits after issuance.</p>
+                </div>
+            </div>
+
+            <div id="banner"></div>
+
+            <section class="card">
+                <h3 style="margin:0 0 8px;">Bulk issuance (CSV)</h3>
+                <p class="notice" style="margin-top:0;">
+                    Upload a CSV. You will preview and confirm before issuing.
+                </p>
+
+                <div class="controls" style="flex-wrap:wrap; gap:10px;">
+                    <button class="btn" type="button" id="btnDownloadTemplate">Download CSV template</button>
+
+                    <label class="btn" for="csvFile" style="cursor:pointer;">
+                        Select CSV
+                    </label>
+                    <input id="csvFile" type="file" accept=".csv,text/csv" style="display:none;">
+
+                    <span class="notice" id="csvMeta">No file selected.</span>
+                </div>
+
+                <div style="height:10px;"></div>
+                <div id="csvErrors" class="notice" style="display:none;"></div>
+
+                <div id="previewWrap" style="display:none;">
+                    <div class="hr"></div>
+                    <h4 style="margin:0 0 8px;">Preview</h4>
+                    <p class="notice" style="margin-top:0;">
+                        After issuance, credentials cannot be edited — only frozen/revoked.
+                    </p>
+
+                    <div style="overflow:auto; max-height:360px; border:1px solid var(--line); border-radius:12px;">
+                        <table class="table" id="previewTable" style="min-width:880px;">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div style="height:12px;"></div>
+                    <div class="controls" style="justify-content:flex-end;">
+                        <button class="btn primary" type="button" id="btnIssueBatch" disabled>Issue batch</button>
+                    </div>
+                </div>
+            </section>
+
+            <div style="height:14px;"></div>
+
+            <section class="card">
+                <h3 style="margin:0 0 8px;">Single issuance</h3>
+
+                <div class="grid-2">
+                    <div>
+                        <label class="label" for="s_fullName">Holder full name</label>
+                        <input class="input" id="s_fullName" placeholder="e.g. Ada Lovelace">
+                    </div>
+                    <div>
+                        <label class="label" for="s_email">Holder email</label>
+                        <input class="input" id="s_email" type="email" placeholder="e.g. ada@example.com">
+                    </div>
+                </div>
+
+                <div style="height:10px;"></div>
+
+                <div class="grid-2">
+                    <div>
+                        <label class="label" for="s_type">Credential type</label>
+                        <input class="input" id="s_type" placeholder="e.g. Degree, License, Certificate">
+                    </div>
+                    <div>
+                        <label class="label" for="s_title">Credential title</label>
+                        <input class="input" id="s_title" placeholder="e.g. B.Sc. Economics">
+                    </div>
+                </div>
+
+                <div style="height:10px;"></div>
+
+                <div class="grid-2">
+                    <div>
+                        <label class="label" for="s_internalId">Internal ID (optional)</label>
+                        <input class="input" id="s_internalId" placeholder="e.g. MAT/2020/1234">
+                    </div>
+                    <div>
+                        <label class="label" for="s_expiry">Expiry date (optional)</label>
+                        <input class="input" id="s_expiry" type="date">
+                    </div>
+                </div>
+
+                <div style="height:10px;"></div>
+
+                <div>
+                    <label class="label" for="s_desc">Description (optional)</label>
+                    <textarea class="input" id="s_desc" rows="3"
+                        placeholder="Extra note shown on the credential"></textarea>
+                </div>
+
+                <div style="height:12px;"></div>
+                <div class="controls" style="justify-content:flex-end;">
+                    <button class="btn primary" type="button" id="btnIssueSingle">Issue credential</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="vs-modal" class="vs-modal-wrap hidden">
+        <div class="vs-modal" role="dialog" aria-modal="true" aria-labelledby="vs-modal-title">
+            <h3 id="vs-modal-title">Confirm</h3>
+            <p id="vs-modal-msg">—</p>
+            <div class="row">
+                <button id="vs-modal-cancel" class="btn" type="button">Cancel</button>
+                <button id="vs-modal-ok" class="btn primary" type="button">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/dashboard.js"></script>
+
+    <script>
+        (function () {
+            const s = Session.get();
+            if (!s || s.role !== "issuer") {
+                Session.clear();
+                location.href = "../login.html";
+            }
+        })();
+    </script>
+
+    <script src="../js/issuer-issue.js"></script>
+</body>
+
+</html>

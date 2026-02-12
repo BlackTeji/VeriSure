@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin Dashboard — VeriSure</title>
+
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <link rel="stylesheet" href="../assets/css/layout.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+
+<body onload="protect();">
+
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="brand">VeriSure</div>
+            <nav class="side-links">
+                <a href="./admin.html" class="active">Platform Overview</a>
+                <a href="./admin-issuers.html">Issuers</a>
+                <a href="./admin-users.html">Users</a>
+                <a href="./admin-logs.html">Activity Logs</a>
+                <a href="./admin-metrics.html">System Metrics</a>
+            </nav>
+            <div class="hr"></div>
+            <button class="btn" onclick="Session.clear()">Logout</button>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <h1>Platform Overview</h1>
+                    <p>Guard the gates. Never touch the ledger.</p>
+                </div>
+            </div>
+
+            <div id="banner"></div>
+
+            <section class="grid-4">
+                <div class="card kpi">
+                    <div class="label">Total Issuers</div>
+                    <div class="value" id="kpiTotal">—</div>
+                </div>
+                <div class="card kpi">
+                    <div class="label">Approved / Pending</div>
+                    <div class="value" id="kpiApPr">—</div>
+                </div>
+                <div class="card kpi">
+                    <div class="label">Suspended</div>
+                    <div class="value" id="kpiSuspended">—</div>
+                </div>
+                <div class="card kpi">
+                    <div class="label">Issuer Registry</div>
+                    <div class="value"><a class="btn" href="./admin-issuers.html">Open</a></div>
+                </div>
+            </section>
+
+            <div style="height:14px;"></div>
+
+            <section class="card">
+                <h3 style="margin:0 0 8px;">Issuer Management</h3>
+                <p class="notice">
+                    Approve or suspend issuers. Suspended issuers cannot issue new credentials.
+                    Existing credentials remain verifiable. Revocation remains issuer-only.
+                </p>
+
+                <div class="controls">
+                    <input id="q" class="input" placeholder="Search issuers (name, ID)" />
+                    <select id="statusFilter" class="select">
+                        <option value="">Filter: Status</option>
+                        <option value="approved">approved</option>
+                        <option value="pending">pending</option>
+                        <option value="suspended">suspended</option>
+                    </select>
+                    <button class="btn" id="refreshBtn">Refresh</button>
+                </div>
+
+                <div style="height:12px;"></div>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Issuer ID</th>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th style="width:220px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="issuerRows"></tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/dashboard.js"></script>
+    <script>
+        function postForm(url, payload) {
+            return fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                body: new URLSearchParams(payload).toString()
+            }).then(async (r) => {
+                const text = await r.text();
+                try { return JSON.parse(text); } catch { return { error: true, message: text }; }
+            });
+        }
+
+        const norm = v => String(v || "").trim().toLowerCase();
+        const esc = s => String(s ?? "").replace(/[&<>"']/g, m => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+        }[m]));
+
+        function badge(status) {
+            status = norm(status);
+            if (status === "approved") return `<span class="badge good">Approved</span>`;
+            if (status === "pending") return `<span class="badge warn">Pending</span>`;
+            if (status === "suspended") return `<span class="badge bad">Suspended</span>`;
+            return `<span class="badge">Unknown</span>`;
+        }
+
+        let ALL = [];
+
+        function applyFilters() {
+            const q = norm(document.getElementById("q").value);
+            const sf = norm(document.getElementById("statusFilter").value);
+
+            let out = ALL.slice();
+            if (sf) out = out.filter(i => norm(i.status) === sf);
+            if (q) out = out.filter(i => norm(i.name).includes(q) || norm(i.id).includes(q));
+
+            render(out);
+            setKpis(ALL);
+        }
+
+        function setKpis(list) {
+            const total = list.length;
+            const approved = list.filter(i => norm(i.status) === "approved").length;
+            const pending = list.filter(i => norm(i.status) === "pending").length;
+            const suspended = list.filter(i => norm(i.status) === "suspended").length;
+
+            document.getElementById("kpiTotal").textContent = total;
+            document.getElementById("kpiApPr").textContent = `${approved} / ${pending}`;
+            document.getElementById("kpiSuspended").textContent = suspended;
+        }
+
+        function render(list) {
+            const tbody = document.getElementById("issuerRows");
+
+            if (!list.length) {
+                tbody.innerHTML = `<tr><td colspan="4" class="empty">No issuers found.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(i => `
+                <tr>
+                  <td>${esc(i.id)}</td>
+                  <td>${esc(i.name || "—")}</td>
+                  <td>${badge(i.status)}</td>
+                  <td>
+                    <button class="btn" ${norm(i.status) === "approved" ? "disabled" : ""} data-approve="${esc(i.id)}">Approve</button>
+                    <button class="btn" ${norm(i.status) === "suspended" ? "disabled" : ""} data-suspend="${esc(i.id)}">Suspend</button>
+                  </td>
+                </tr>
+            `).join("");
+        }
+
+        async function loadIssuers() {
+            const s = Session.get();
+            if (!s || s.role !== "admin") {
+                showBanner("error", "Unauthorized. Please log in as admin.");
+                return;
+            }
+
+            const tbody = document.getElementById("issuerRows");
+            tbody.innerHTML = `<tr><td colspan="4" class="empty">Loading…</td></tr>`;
+
+            const res = await postForm(API_URL, { action: "listIssuers" });
+            if (res && res.error) {
+                showBanner("error", res.error || res.message || "Failed to load issuers.");
+                tbody.innerHTML = `<tr><td colspan="4" class="empty">Failed to load.</td></tr>`;
+                return;
+            }
+
+            ALL = Array.isArray(res.issuers) ? res.issuers : [];
+            applyFilters();
+        }
+
+        function approve(id) {
+            openConfirmModal({
+                title: "Approve Issuer",
+                message: "Approving an issuer allows them to issue new credentials. Existing credentials are unaffected.",
+                confirmText: "Approve",
+                onConfirm: async () => {
+                    const res = await postForm(API_URL, { action: "approveIssuer", entity_id: id });
+                    if (res && res.error) return showBanner("error", res.error || res.message || "Approve failed.");
+                    showBanner("success", "Issuer approved.");
+                    loadIssuers();
+                }
+            });
+        }
+
+        function suspend(id) {
+            openConfirmModal({
+                title: "Suspend Issuer",
+                message: "Suspended issuers cannot issue new credentials. Existing credentials remain verifiable. Revocation remains issuer-only.",
+                confirmText: "Suspend",
+                onConfirm: async () => {
+                    const res = await postForm(API_URL, { action: "suspendIssuer", entity_id: id });
+                    if (res && res.error) return showBanner("error", res.error || res.message || "Suspend failed.");
+                    showBanner("success", "Issuer suspended.");
+                    loadIssuers();
+                }
+            });
+        }
+
+        document.getElementById("q").addEventListener("input", applyFilters);
+        document.getElementById("statusFilter").addEventListener("change", applyFilters);
+        document.getElementById("refreshBtn").addEventListener("click", loadIssuers);
+
+        document.getElementById("issuerRows").addEventListener("click", (e) => {
+            const btn = e.target.closest("button");
+            if (!btn) return;
+
+            const a = btn.getAttribute("data-approve");
+            const s = btn.getAttribute("data-suspend");
+
+            if (a) approve(a);
+            if (s) suspend(s);
+        });
+
+        loadIssuers();
+    </script>
+</body>
+
+</html>

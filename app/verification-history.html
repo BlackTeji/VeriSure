@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Verification History — VeriSure</title>
+
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <link rel="stylesheet" href="../assets/css/layout.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+
+<body onload="protect();">
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="brand">VeriSure</div>
+            <nav class="side-links">
+                <a href="./verify.html">Verify Credential</a>
+                <a href="./verification-history.html" class="active">Verification History</a>
+            </nav>
+            <div class="hr"></div>
+            <button class="btn" type="button" onclick="Session.clear()">Logout</button>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <h1>Verification History</h1>
+                    <p>Record of credentials verified by your organization.</p>
+                </div>
+            </div>
+
+            <div id="banner"></div>
+
+            <section class="card">
+                <div id="historyWrap" class="muted">Loading verification history…</div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../js/app.js"></script>
+
+    <script>
+        const session = Session.get();
+        if (!session || session.role !== "verifier") {
+            location.href = "../login.html";
+        }
+        if (!session.entityId || !session.email) {
+            Session.clear();
+            location.href = "../login.html";
+        }
+
+        function apiPost(payload) {
+            if (typeof window.postForm === "function") {
+                return window.postForm(API_URL, payload);
+            }
+
+            return fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                body: new URLSearchParams(payload).toString()
+            }).then(r => r.json());
+        }
+
+        function escapeHtml(str) {
+            return String(str ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function badge(v) {
+            const val = String(v || "").toLowerCase();
+            const cls =
+                val === "valid" ? "pill pill-success" :
+                    val === "revoked" || val === "invalid" ? "pill pill-danger" :
+                        val === "frozen" ? "pill pill-warning" :
+                            "pill";
+            return `<span class="${cls}">${escapeHtml(val || "—")}</span>`;
+        }
+
+        async function loadHistory() {
+            const wrap = document.getElementById("historyWrap");
+
+            const res = await apiPost({
+                action: "verification_history",
+                verifier_email: session.email,
+                verifier_entity_id: session.entityId
+            });
+
+            if (res.error) {
+                wrap.innerHTML = `<div class="error">${escapeHtml(res.error)}</div>`;
+                return;
+            }
+
+            const rows = Array.isArray(res.verifications) ? res.verifications : [];
+
+            if (!rows.length) {
+                wrap.innerHTML = `<div class="muted">No verification activity yet.</div>`;
+                return;
+            }
+
+            wrap.innerHTML = `
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Credential ID</th>
+              <th>Verdict</th>
+              <th>Status</th>
+              <th>Issuer</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td>${escapeHtml(r.timestamp || "")}</td>
+                <td class="mono">${escapeHtml(r.credential_id || "")}</td>
+                <td>${badge(r.verdict)}</td>
+                <td>${badge(r.credential_status)}</td>
+                <td class="mono">${escapeHtml(r.issuer_entity_id || "")}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+        }
+
+        document.addEventListener("DOMContentLoaded", loadHistory);
+    </script>
+</body>
+
+</html>

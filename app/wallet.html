@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>My Credentials — VeriSure</title>
+
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <link rel="stylesheet" href="../assets/css/layout.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+
+<body onload="protect();">
+
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="brand">VeriSure</div>
+            <nav class="side-links">
+                <a href="wallet.html" class="active">My Credentials</a>
+                <a href="./account.html">Account Settings</a>
+            </nav>
+            <div class="hr"></div>
+            <button class="btn" type="button" onclick="Session.clear()">Logout</button>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <h1>My Credentials</h1>
+                    <p>Wallet view. Read-only. Share by credential ID or verify link.</p>
+                </div>
+            </div>
+
+            <div id="banner"></div>
+
+            <section class="card" id="emptyState">
+                <h3 style="margin:0 0 6px;">No credentials yet</h3>
+                <p class="notice">You haven’t received any credentials yet.</p>
+            </section>
+
+            <section class="grid-2" id="cards" style="display:none;"></section>
+        </main>
+    </div>
+
+    <div id="vs-modal" class="vs-modal-wrap hidden" aria-hidden="true">
+        <div class="vs-modal" role="dialog" aria-modal="true" aria-labelledby="vs-modal-title">
+            <h3 id="vs-modal-title">—</h3>
+            <div id="vs-modal-msg">—</div>
+            <div class="row">
+                <button id="vs-modal-cancel" class="btn" type="button">Close</button>
+                <button id="vs-modal-ok" class="btn primary" type="button">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/dashboard.js"></script>
+
+    <script>
+        function esc(v) {
+            return String(v ?? "").replace(/[&<>"']/g, m => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;",
+                '"': "&quot;", "'": "&#039;"
+            }[m]));
+        }
+
+        function postForm(payload) {
+            return fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                body: new URLSearchParams(payload).toString()
+            }).then(async (r) => {
+                const text = await r.text();
+                try { return JSON.parse(text); } catch { return { error: "Invalid server response", raw: text }; }
+            });
+        }
+
+        function statusBadge(status) {
+            status = String(status || "").toLowerCase();
+            if (status === "active") return `<span class="badge good">Active</span>`;
+            if (status === "frozen") return `<span class="badge warn">Frozen</span>`;
+            if (status === "revoked") return `<span class="badge bad">Revoked</span>`;
+            return `<span class="badge">Unknown</span>`;
+        }
+
+        function openInfoModal({ title = "Info", html = "", okText = "OK" }) {
+            const wrap = document.getElementById("vs-modal");
+            const t = document.getElementById("vs-modal-title");
+            const m = document.getElementById("vs-modal-msg");
+            const ok = document.getElementById("vs-modal-ok");
+            const cancel = document.getElementById("vs-modal-cancel");
+
+            t.textContent = title;
+            m.innerHTML = html;
+            ok.textContent = okText;
+
+            ok.style.display = "inline-flex";
+            cancel.textContent = "Close";
+
+            ok.onclick = closeModal;
+            cancel.onclick = closeModal;
+
+            wrap.classList.remove("hidden");
+        }
+
+        function closeModal() {
+            document.getElementById("vs-modal")?.classList.add("hidden");
+        }
+
+        async function copyText(label, text) {
+            const t = String(text || "");
+            try {
+                await navigator.clipboard.writeText(t);
+                openInfoModal({
+                    title: "Copied",
+                    html: `<div class="notice">${esc(label)} copied to clipboard.</div>`
+                });
+            } catch (e) {
+                openInfoModal({
+                    title: "Copy failed",
+                    html: `<div class="notice">Could not copy. Please copy manually:</div>
+                    <div class="notice"><span class="mono">${esc(t)}</span></div>`
+                });
+            }
+        }
+
+        async function loadWallet() {
+            const s = Session.get();
+            if (!s || s.role !== "holder") return;
+
+            const empty = document.getElementById("emptyState");
+            const cards = document.getElementById("cards");
+
+            try {
+                const data = await postForm({ action: "wallet", holder_email: s.email });
+
+                if (data?.error) {
+                    showBanner("error", data.error);
+                    return;
+                }
+
+                const creds = Array.isArray(data.credentials) ? data.credentials : [];
+                if (!creds.length) {
+                    empty.style.display = "block";
+                    cards.style.display = "none";
+                    return;
+                }
+
+                empty.style.display = "none";
+                cards.style.display = "grid";
+
+                cards.innerHTML = creds.map(c => {
+                    const title = esc(c.credential_title || "—");
+                    const issuerId = esc(c.issuer_entity_id || "—");
+                    const issuedAt = esc(c.issued_at || "—");
+                    const cid = esc(c.credential_id || "—");
+                    const qr = esc(c.qr_url || "—");
+                    const status = String(c.status || "").toLowerCase();
+
+                    return `
+                        <div class="card vs-cred-card">
+                          <div style="display:flex;justify-content:space-between;gap:10px;">
+                            <div>
+                              <div style="font-weight:700;">${title}</div>
+                              <div class="notice" style="margin-top:4px;">Issuer ID: <span class="mono">${issuerId}</span></div>
+                            </div>
+                            ${statusBadge(status)}
+                          </div>
+
+                          <div class="hr"></div>
+
+                          <div class="notice"><b>Issued:</b> ${issuedAt}</div>
+                          <div class="notice"><b>Credential ID:</b> <span class="mono">${cid}</span></div>
+                          <div class="notice"><b>Verify link:</b> <span class="mono">${qr}</span></div>
+
+                          <div style="height:10px;"></div>
+
+                          <div class="card-actions">
+                            <button class="btn" type="button" data-copy-cid="${cid}">Copy ID</button>
+                            <button class="btn" type="button" data-copy-link="${qr}">Copy Verify Link</button>
+                          </div>
+
+                          <div style="height:8px;"></div>
+                          <div class="notice" style="opacity:.85;">
+                            Share the ID or link to a verifier. (Verification is logged under the verifier’s account.)
+                          </div>
+                        </div>
+                    `;
+                }).join("");
+
+            } catch (e) {
+                showBanner("error", "Failed to load wallet.");
+            }
+        }
+
+        document.addEventListener("click", (e) => {
+            const copyIdBtn = e.target.closest("[data-copy-cid]");
+            if (copyIdBtn) return copyText("Credential ID", copyIdBtn.getAttribute("data-copy-cid"));
+
+            const copyLinkBtn = e.target.closest("[data-copy-link]");
+            if (copyLinkBtn) return copyText("Verify link", copyLinkBtn.getAttribute("data-copy-link"));
+        });
+
+        loadWallet().catch(() => { });
+    </script>
+
+</body>
+
+</html>

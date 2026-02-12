@@ -1,0 +1,252 @@
+<!-- app/admin-issuers.html -->
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Issuers — Admin — VeriSure</title>
+
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <link rel="stylesheet" href="../assets/css/layout.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+
+    <style>
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .row-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filterbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filterbar input {
+            min-width: 240px;
+        }
+    </style>
+</head>
+
+<body onload="protect();">
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="brand">VeriSure</div>
+            <nav class="side-links">
+                <a href="./admin.html">Platform Overview</a>
+                <a href="./admin-issuers.html" class="active">Issuers</a>
+                <a href="./admin-users.html">Users</a>
+                <a href="./admin-logs.html">Activity Logs</a>
+                <a href="./admin-metrics.html">System Metrics</a>
+            </nav>
+            <div class="hr"></div>
+            <button class="btn" onclick="Session.clear()">Logout</button>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <h1>Issuers</h1>
+                    <p>Approve or suspend issuer access. Existing credentials remain verifiable.</p>
+                </div>
+            </div>
+
+            <div id="banner"></div>
+
+            <section class="card">
+                <div class="filterbar">
+                    <input id="q" class="input" placeholder="Search by name or entity ID">
+                    <select id="statusFilter" class="select">
+                        <option value="">All statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="suspended">Suspended</option>
+                    </select>
+                    <button class="btn" id="refreshBtn">Refresh</button>
+                </div>
+
+                <div style="height:12px;"></div>
+
+                <div id="tableWrap"></div>
+            </section>
+
+            <div id="vs-modal" class="vs-modal-wrap hidden">
+                <div class="vs-modal">
+                    <h3 id="vs-modal-title">Confirm</h3>
+                    <p id="vs-modal-msg">—</p>
+                    <div class="row">
+                        <button id="vs-modal-cancel" class="btn">Cancel</button>
+                        <button id="vs-modal-ok" class="btn primary">Confirm</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/dashboard.js"></script>
+
+    <script>
+        function postForm(url, payload) {
+            return fetch(url, {
+                method: "POST",
+                body: new URLSearchParams(payload)
+            }).then(async (r) => {
+                const text = await r.text();
+                try { return JSON.parse(text); } catch { return { error: true, message: text }; }
+            });
+        }
+
+        const norm = v => String(v || "").trim().toLowerCase();
+        const esc = s => String(s ?? "").replace(/[&<>"']/g, m => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+        }[m]));
+
+        let ALL = [];
+
+        function pill(status) {
+            status = norm(status);
+            if (status === "approved") return `<span class="pill pill-success">Approved</span>`;
+            if (status === "pending") return `<span class="pill pill-warning">Pending</span>`;
+            if (status === "suspended") return `<span class="pill pill-danger">Suspended</span>`;
+            return `<span class="pill">Unknown</span>`;
+        }
+
+        function render(issuers) {
+            const wrap = document.getElementById("tableWrap");
+
+            if (!issuers.length) {
+                wrap.innerHTML = `<div class="empty">No issuers found.</div>`;
+                return;
+            }
+
+            wrap.innerHTML = `
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Entity ID</th>
+                      <th>Status</th>
+                      <th style="width:260px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="issuerTbody">
+                    ${issuers.map(i => `
+                      <tr>
+                        <td>${esc(i.name || "—")}</td>
+                        <td class="mono">${esc(i.id)}</td>
+                        <td>${pill(i.status)}</td>
+                        <td>
+                          <div class="row-actions">
+                            <button class="btn primary" ${norm(i.status) === "approved" ? "disabled" : ""} data-approve="${esc(i.id)}">Approve</button>
+                            <button class="btn" ${norm(i.status) === "suspended" ? "disabled" : ""} data-suspend="${esc(i.id)}">Suspend</button>
+                          </div>
+                        </td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+            `;
+        }
+
+        function applyFilters() {
+            const q = norm(document.getElementById("q").value);
+            const sf = norm(document.getElementById("statusFilter").value);
+
+            let out = ALL.slice();
+
+            if (sf) out = out.filter(i => norm(i.status) === sf);
+            if (q) out = out.filter(i => norm(i.name).includes(q) || norm(i.id).includes(q));
+
+            render(out);
+        }
+
+        async function loadIssuers() {
+            const s = Session.get();
+            if (!s || s.role !== "admin") {
+                showBanner("error", "Unauthorized. Please log in as admin.");
+                return;
+            }
+
+            const wrap = document.getElementById("tableWrap");
+            wrap.innerHTML = `<div class="empty">Loading…</div>`;
+
+            const res = await postForm(API_URL, { action: "listIssuers" });
+            if (res && res.error) {
+                showBanner("error", res.error || res.message || "Failed to load issuers.");
+                wrap.innerHTML = `<div class="empty">Failed to load.</div>`;
+                return;
+            }
+
+            ALL = Array.isArray(res.issuers) ? res.issuers : [];
+            applyFilters();
+        }
+
+        function approve(entityId) {
+            openConfirmModal({
+                title: "Approve issuer",
+                message: `Approve issuer access for ${entityId}?`,
+                confirmText: "Approve",
+                onConfirm: async () => {
+                    const res = await postForm(API_URL, { action: "approveIssuer", entity_id: entityId });
+                    if (res && res.error) return showBanner("error", res.error || res.message || "Approve failed.");
+                    showBanner("success", "Issuer approved.");
+                    loadIssuers();
+                }
+            });
+        }
+
+        function suspend(entityId) {
+            openConfirmModal({
+                title: "Suspend issuer",
+                message: `Suspend issuer access for ${entityId}?`,
+                confirmText: "Suspend",
+                onConfirm: async () => {
+                    const res = await postForm(API_URL, { action: "suspendIssuer", entity_id: entityId });
+                    if (res && res.error) return showBanner("error", res.error || res.message || "Suspend failed.");
+                    showBanner("success", "Issuer suspended.");
+                    loadIssuers();
+                }
+            });
+        }
+
+        document.getElementById("q").addEventListener("input", applyFilters);
+        document.getElementById("statusFilter").addEventListener("change", applyFilters);
+        document.getElementById("refreshBtn").addEventListener("click", loadIssuers);
+
+        document.getElementById("tableWrap").addEventListener("click", (e) => {
+            const btn = e.target.closest("button");
+            if (!btn) return;
+
+            const a = btn.getAttribute("data-approve");
+            const s = btn.getAttribute("data-suspend");
+
+            if (a) approve(a);
+            if (s) suspend(s);
+        });
+
+        loadIssuers();
+    </script>
+</body>
+
+</html>

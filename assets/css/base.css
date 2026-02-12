@@ -1,0 +1,96 @@
+/* base.css */
+:root {
+    /* App (default) = frosted light blue */
+    --bg: #f7faff;
+    /* almost white, cool tint */
+    --surface: #ffffff;
+    /* cards */
+    --surface-soft: #f1f6ff;
+    /* subtle panels / soft blocks */
+    --border: rgba(15, 23, 42, 0.10);
+
+    --text: #0f172a;
+    /* slate-900 */
+    --muted: #64748b;
+    /* slate-500 */
+
+    --primary: #3b82f6;
+    /* blue */
+    --primary-soft: rgba(59, 130, 246, 0.12);
+
+    --success: #16a34a;
+    --warning: #f59e0b;
+    --danger: #dc2626;
+
+    --radius: 12px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+}
+
+h2,
+h3 {
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+p {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 12px 14px;
+    color: var(--text);
+    background: rgba(15, 23, 42, 0.02);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: rgba(100, 116, 139, 0.75);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: rgba(59, 130, 246, 0.55);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18);
+}
+
+select {
+    border-radius: 999px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 44px;
+    background-image:
+        linear-gradient(45deg, transparent 50%, rgba(15, 23, 42, 0.45) 50%),
+        linear-gradient(135deg, rgba(15, 23, 42, 0.45) 50%, transparent 50%);
+    background-position:
+        calc(100% - 18px) 50%,
+        calc(100% - 12px) 50%;
+    background-size:
+        6px 6px,
+        6px 6px;
+    background-repeat: no-repeat;
+}
+
+select option {
+    background: #ffffff;
+    color: var(--text);
+}

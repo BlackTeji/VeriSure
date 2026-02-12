@@ -1,0 +1,242 @@
+/* landing.css */
+body.landing {
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 55%, #eef2f7 100%);
+    color: #0b0f14;
+}
+
+body.landing .hero-section {
+    max-width: 760px;
+    margin: 100px auto 120px;
+    text-align: center;
+}
+
+body.landing .hero-section h1 {
+    font-size: 32px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+body.landing .hero-section p {
+    font-size: 15px;
+    color: #475569;
+}
+
+body.landing .hero-actions {
+    margin-top: 28px;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+body.landing .features-section {
+    padding: 0 24px 120px;
+    text-align: center;
+}
+
+body.landing .section-title.center {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 36px;
+}
+
+body.landing .card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
+    gap: 32px;
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+body.landing .info-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 28px 24px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, .06), 0 1px 2px rgba(0, 0, 0, .04);
+    text-align: center;
+}
+
+body.landing .info-card h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #0b0f14;
+}
+
+body.landing .info-card p {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: #6b7280;
+}
+
+body.landing .split-section {
+    max-width: 1100px;
+    margin: 0 auto 120px;
+    padding: 0 24px;
+
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    align-items: center;
+}
+
+body.landing .split-text h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #475569;
+}
+
+body.landing .split-text ul {
+    padding-left: 18px;
+    color: #475569;
+    font-size: 14px;
+}
+
+body.landing .roles-visual {
+    height: 220px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: #64748b;
+    background: linear-gradient(135deg, #e5e7eb, #f1f5f9);
+}
+
+body.landing .lifecycle-visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body.landing .lifecycle-diagram {
+    width: 220px;
+    height: 220px
+}
+
+body.landing .diagram-label {
+    font-size: 12px;
+    fill: #475569;
+    font-weight: 500
+}
+
+body.landing .lifecycle-diagram,
+body.landing .lifecycle-diagram * {
+    opacity: 1 !important;
+    transform: none !important;
+}
+
+body.landing .clients-section {
+    max-width: 900px;
+    margin: 0 auto 120px;
+    padding: 0 24px;
+    text-align: center;
+    color: #475569;
+}
+
+body.landing .logo-marquee {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    margin-top: 40px;
+}
+
+body.landing .logo-track {
+    display: flex;
+    align-items: center;
+    gap: 64px;
+    width: max-content;
+    animation: marquee 40s linear infinite;
+}
+
+body.landing .logo-track img {
+    max-height: 36px;
+    width: auto;
+    opacity: .6;
+    filter: grayscale(100%);
+    transition: opacity .2s ease, filter .2s ease;
+}
+
+body.landing .logo-track img:hover {
+    opacity: .9;
+    filter: grayscale(0%);
+}
+
+body.landing .logo-marquee:hover .logo-track {
+    animation-play-state: paused
+}
+
+@keyframes marquee {
+    from {
+        transform: translateX(0)
+    }
+
+    to {
+        transform: translateX(-50%)
+    }
+}
+
+body.landing .logo-marquee::before,
+body.landing .logo-marquee::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 80px;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+body.landing .logo-marquee::before {
+    left: 0;
+    background: linear-gradient(to right, #f1f5f9, transparent);
+}
+
+body.landing .logo-marquee::after {
+    right: 0;
+    background: linear-gradient(to left, #f1f5f9, transparent);
+}
+
+body.landing .fade-in {
+    opacity: 1;
+    transform: translateY(12px)
+}
+
+body.landing .fade-in.visible {
+    transform: translateY(0);
+    transition: transform .6s ease
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.landing .logo-track {
+        animation: none
+    }
+}
+
+@media (max-width:900px) {
+    body.landing .card-grid {
+        grid-template-columns: 1fr
+    }
+
+    body.landing .split-section {
+        grid-template-columns: 1fr;
+        gap: 32px
+    }
+
+    body.landing .hero-section h1 {
+        font-size: 26px
+    }
+
+    body.landing .lifecycle-diagram {
+        width: 180px;
+        height: 180px
+    }
+}
+
+body.landing .landing-footer {
+    margin: 40px 0 24px;
+    text-align: center;
+    font-size: 12px;
+    color: #9ca3af;
+}

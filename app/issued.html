@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Issued Credentials — VeriSure</title>
+
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <link rel="stylesheet" href="../assets/css/layout.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+
+<body onload="protect();">
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="brand">VeriSure</div>
+            <nav class="side-links">
+                <a href="./issuer.html">Overview</a>
+                <a href="./issue.html">Issue Credential</a>
+                <a href="./issued.html" class="active">Issued Credentials</a>
+                <a href="./issuer-logs.html">Activity & Logs</a>
+                <a href="./issuer-settings.html">Issuer Settings</a>
+            </nav>
+            <div class="hr"></div>
+            <button class="btn" type="button" onclick="Session.clear()">Logout</button>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <h1>Issued Credentials</h1>
+                    <p>Registry view. Click a credential ID to view details.</p>
+                </div>
+            </div>
+
+            <div id="banner"></div>
+
+            <section class="card">
+                <div class="controls" style="gap:10px; flex-wrap:wrap;">
+                    <input id="search" class="input" placeholder="Search by ID, holder email, title">
+                    <select id="statusFilter" class="select">
+                        <option value="">All statuses</option>
+                        <option value="active">Active</option>
+                        <option value="frozen">Frozen</option>
+                        <option value="revoked">Revoked</option>
+                    </select>
+                    <button class="btn" type="button" id="refreshBtn">Refresh</button>
+                </div>
+
+                <div style="height:12px;"></div>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Credential ID</th>
+                            <th>Title</th>
+                            <th>Holder</th>
+                            <th>Status</th>
+                            <th>Issued</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows"></tbody>
+                </table>
+
+                <div id="emptyState" class="empty hidden">No credentials issued yet.</div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/dashboard.js"></script>
+
+    <script>
+        (function () {
+            const session = Session.get();
+            if (!session || session.role !== "issuer") {
+                Session.clear();
+                location.href = "../login.html";
+                return;
+            }
+
+            const rowsEl = document.getElementById("rows");
+            const emptyEl = document.getElementById("emptyState");
+            const searchEl = document.getElementById("search");
+            const statusEl = document.getElementById("statusFilter");
+            const refreshBtn = document.getElementById("refreshBtn");
+
+            let all = [];
+
+            function postForm(payload) {
+                return fetch(API_URL, {
+                    method: "POST",
+                    body: new URLSearchParams(payload)
+                }).then(async r => {
+                    const t = await r.text();
+                    try { return JSON.parse(t); } catch { return { error: t }; }
+                });
+            }
+
+            function esc(v) {
+                return String(v ?? "").replace(/[&<>"']/g, m => ({
+                    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+                    '"': "&quot;", "'": "&#039;"
+                }[m]));
+            }
+
+            function badge(status) {
+                const s = String(status || "").toLowerCase();
+                if (s === "active") return '<span class="badge good">Active</span>';
+                if (s === "frozen") return '<span class="badge warn">Frozen</span>';
+                return '<span class="badge bad">Revoked</span>';
+            }
+
+            function actionButtons(c) {
+                const s = String(c.status || "").toLowerCase();
+
+                if (s === "active") {
+                    return `
+                        <button class="btn xs warn" onclick="changeStatus('${c.id}','frozen')">Freeze</button>
+                        <button class="btn xs danger" onclick="changeStatus('${c.id}','revoked')">Revoke</button>
+                    `;
+                }
+
+                if (s === "frozen") {
+                    return `
+                        <button class="btn xs" onclick="changeStatus('${c.id}','active')">Unfreeze</button>
+                        <button class="btn xs danger" onclick="changeStatus('${c.id}','revoked')">Revoke</button>
+                    `;
+                }
+
+                return "—";
+            }
+
+            function render(list) {
+                if (!list.length) {
+                    rowsEl.innerHTML = "";
+                    emptyEl.classList.remove("hidden");
+                    return;
+                }
+
+                emptyEl.classList.add("hidden");
+
+                rowsEl.innerHTML = list.map(c => `
+                    <tr>
+                        <td>
+                            <a class="mono" href="./issued-view.html?id=${encodeURIComponent(c.id)}">
+                                ${esc(c.id)}
+                            </a>
+                        </td>
+                        <td>${esc(c.title)}</td>
+                        <td>${esc(c.holder_email)}</td>
+                        <td>${badge(c.status)}</td>
+                        <td>${esc(c.issued_at)}</td>
+                        <td>${actionButtons(c)}</td>
+                    </tr>
+                `).join("");
+            }
+
+            function applyFilters() {
+                const q = searchEl.value.trim().toLowerCase();
+                const s = String(statusEl.value || "").toLowerCase();
+
+                render(all.filter(c => {
+                    const m1 =
+                        !q ||
+                        String(c.id || "").toLowerCase().includes(q) ||
+                        String(c.title || "").toLowerCase().includes(q) ||
+                        String(c.holder_email || "").toLowerCase().includes(q);
+
+                    const m2 = !s || String(c.status || "").toLowerCase() === s;
+                    return m1 && m2;
+                }));
+            }
+
+            async function loadIssued() {
+                rowsEl.innerHTML = `<tr><td colspan="6" class="empty">Loading…</td></tr>`;
+                emptyEl.classList.add("hidden");
+
+                const res = await postForm({
+                    action: "issuer_credentials",
+                    entity_id: session.entityId
+                });
+
+                if (res && res.error) {
+                    showBanner("error", res.error || "Failed to load issued credentials.");
+                    rowsEl.innerHTML = "";
+                    emptyEl.classList.remove("hidden");
+                    return;
+                }
+
+                all = Array.isArray(res.credentials) ? res.credentials : [];
+                applyFilters();
+            }
+
+            window.changeStatus = function (id, next) {
+                openConfirmModal({
+                    title: "Confirm action",
+                    message: `Change credential status to "${next}"?`,
+                    confirmText: "Confirm",
+                    onConfirm: async () => {
+                        const res = await postForm({
+                            action: "credential_status",
+                            issuer_email: session.email,
+                            credential_id: id,
+                            status: next
+                        });
+
+                        if (res && res.error) {
+                            showBanner("error", res.error || "Action failed");
+                            return;
+                        }
+
+                        showBanner("success", `Credential ${next}`);
+                        loadIssued();
+                    }
+                });
+            };
+
+            searchEl.addEventListener("input", applyFilters);
+            statusEl.addEventListener("change", applyFilters);
+            refreshBtn.addEventListener("click", loadIssued);
+
+            lockIssuerUntilApproved();
+            loadIssued();
+        })();
+    </script>
+</body>
+
+</html>

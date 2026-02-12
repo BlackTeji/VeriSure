@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Credential Detail — VeriSure</title>
+
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <link rel="stylesheet" href="../assets/css/layout.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+
+<body onload="protect();">
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="brand">VeriSure</div>
+            <nav class="side-links">
+                <a href="./issuer.html">Overview</a>
+                <a href="./issue.html">Issue Credential</a>
+                <a href="./issued.html" class="active">Issued Credentials</a>
+                <a href="./issuer-logs.html">Activity & Logs</a>
+                <a href="./issuer-settings.html">Issuer Settings</a>
+            </nav>
+            <div class="hr"></div>
+            <button class="btn" type="button" onclick="Session.clear()">Logout</button>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <h1>Credential Detail</h1>
+                    <p>Immutable record. Status changes are permanent.</p>
+                </div>
+            </div>
+
+            <div id="banner"></div>
+
+            <section class="card">
+                <div class="kv-grid">
+                    <div class="kv">
+                        <div class="k">Credential ID</div>
+                        <div class="v mono" id="cid">—</div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">Title</div>
+                        <div class="v" id="title">—</div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">Holder</div>
+                        <div class="v" id="holder">—</div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">Status</div>
+                        <div class="v" id="status">—</div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">Issued At</div>
+                        <div class="v" id="issued">—</div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">Hash</div>
+                        <div class="v mono" id="hash">—</div>
+                    </div>
+                </div>
+            </section>
+
+            <div style="height:14px;"></div>
+
+            <section class="card">
+                <h3 style="margin:0 0 6px;">Credential Actions</h3>
+                <p class="notice" style="margin-top:0;">Freeze can be undone. Revoke is final.</p>
+
+                <div class="controls" style="gap:10px;">
+                    <button class="btn warn" type="button" id="freezeBtn">Freeze</button>
+                    <button class="btn" type="button" id="unfreezeBtn">Unfreeze</button>
+                    <button class="btn bad" type="button" id="revokeBtn">Revoke</button>
+                    <a href="./issued.html" class="btn">Back</a>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="vs-modal" class="vs-modal-wrap hidden" aria-hidden="true">
+        <div class="vs-modal" role="dialog" aria-modal="true" aria-labelledby="vs-modal-title">
+            <h3 id="vs-modal-title">Confirm</h3>
+            <p id="vs-modal-msg">—</p>
+            <div class="row">
+                <button id="vs-modal-cancel" class="btn" type="button">Cancel</button>
+                <button id="vs-modal-ok" class="btn primary" type="button">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/dashboard.js"></script>
+
+    <script>
+        (function () {
+            const session = Session.get();
+            if (!session || session.role !== "issuer") {
+                Session.clear();
+                location.href = "../login.html";
+                return;
+            }
+
+            const params = new URLSearchParams(location.search);
+            const credId = params.get("id");
+
+            const freezeBtn = document.getElementById("freezeBtn");
+            const unfreezeBtn = document.getElementById("unfreezeBtn");
+            const revokeBtn = document.getElementById("revokeBtn");
+
+            function postForm(payload) {
+                return fetch(API_URL, {
+                    method: "POST",
+                    body: new URLSearchParams(payload)
+                }).then(async (r) => {
+                    const text = await r.text();
+                    try { return JSON.parse(text); } catch { return { error: text }; }
+                });
+            }
+
+            function statusBadge(st) {
+                const s = String(st || "").toLowerCase();
+                if (s === "active") return '<span class="badge good">Active</span>';
+                if (s === "frozen") return '<span class="badge warn">Frozen</span>';
+                return '<span class="badge bad">Revoked</span>';
+            }
+
+            function setButtonsForStatus(st) {
+                const s = String(st || "").toLowerCase();
+                freezeBtn.disabled = s !== "active";
+                unfreezeBtn.disabled = s !== "frozen";
+                revokeBtn.disabled = s === "revoked";
+            }
+
+            async function load() {
+                if (!credId) {
+                    showBanner("error", "Open this page from Issued Credentials.");
+                    setButtonsForStatus("revoked");
+                    return;
+                }
+
+                const res = await postForm({
+                    action: "issuer_credential",
+                    credential_id: credId,
+                    issuer_email: session.email
+                });
+
+                if (res && res.error) {
+                    showBanner("error", res.error);
+                    return;
+                }
+
+                document.getElementById("cid").textContent = res.credential_id || "—";
+                document.getElementById("title").textContent = res.credential_title || "—";
+                document.getElementById("holder").textContent = res.holder_email || "—";
+                document.getElementById("status").innerHTML = statusBadge(res.status);
+                document.getElementById("issued").textContent = res.issued_at || "—";
+                document.getElementById("hash").textContent = res.hash || "—";
+
+                setButtonsForStatus(res.status);
+            }
+
+            function askReason(next) {
+                const title =
+                    next === "frozen" ? "Freeze credential" :
+                        next === "active" ? "Unfreeze credential" :
+                            "Revoke credential";
+
+                const intro =
+                    next === "active"
+                        ? "This will restore the credential to Active."
+                        : "This action cannot be undone.";
+
+                return new Promise((resolve) => {
+                    openConfirmModal({
+                        title,
+                        message: `
+                            <div style="display:grid; gap:10px;">
+                                <div>${intro}</div>
+                                <div>
+                                    <label class="label" for="reasonInput" style="display:block; margin-bottom:6px;">Reason <span class="required-hint">Required</span></label>
+                                    <textarea id="reasonInput" class="input" rows="3" placeholder="Provide a brief reason (required)"></textarea>
+                                    <div class="notice" style="margin-top:6px;">This will be recorded in the audit log.</div>
+                                </div>
+                            </div>
+                        `,
+                        confirmText: "Confirm",
+                        onConfirm: () => {
+                            const el = document.getElementById("reasonInput");
+                            const reason = String(el && el.value ? el.value : "").trim();
+                            resolve(reason || null);
+                        }
+                    });
+                });
+            }
+
+            async function updateStatus(next) {
+                const reason = await askReason(next);
+                if (!reason) return showBanner("error", "Reason is required.");
+
+                const res = await postForm({
+                    action: "credential_status",
+                    credential_id: credId,
+                    status: next,
+                    reason,
+                    issuer_email: session.email
+                });
+
+                if (res && res.error) {
+                    showBanner("error", res.error);
+                    return;
+                }
+
+                if (!res.success) {
+                    showBanner("error", "Update failed.");
+                    return;
+                }
+
+                showBanner("success", "Status updated.");
+                load();
+            }
+
+            freezeBtn.addEventListener("click", () => updateStatus("frozen"));
+            unfreezeBtn.addEventListener("click", () => updateStatus("active"));
+            revokeBtn.addEventListener("click", () => updateStatus("revoked"));
+
+            lockIssuerUntilApproved();
+            load();
+        })();
+    </script>
+</body>
+
+</html>

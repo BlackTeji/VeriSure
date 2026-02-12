@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Account — VeriSure</title>
+
+    <link rel="stylesheet" href="assets/css/base.css">
+    <link rel="stylesheet" href="assets/css/layout.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/auth.css">
+</head>
+
+<body class="auth">
+
+    <header class="navbar">
+        <span>VeriSure</span>
+
+        
+        <nav class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="login.html">Login</a>
+            <a href="signup.html" class="nav-cta">Get Started</a>
+        </nav>
+    </header>
+
+    <main class="auth-split-container">
+        <div class="auth-split-card">
+
+            <div class="auth-panel auth-panel-left">
+                <div class="auth-left-content">
+                    <h2>Welcome to VeriSure</h2>
+                    <p>
+                        VeriSure provides a trusted framework for issuing, holding,
+                        and verifying credentials with cryptographic integrity and
+                        institutional accountability.
+                    </p>
+                </div>
+
+                <div class="auth-visual-placeholder">
+                    <img src="assets/illustrations/signup.svg" alt="Secure onboarding"
+                        style="max-width: 100%; max-height: 100%;" />
+                </div>
+            </div>
+
+            <div class="auth-panel auth-panel-right">
+                <h2>Create your account</h2>
+
+                <div id="banner"></div>
+
+    
+                <form id="signupForm" autocomplete="on" novalidate>
+
+                    <label for="role">
+                        Account type <span class="required-hint">Required</span>
+                    </label>
+
+                    
+                    <select id="role" required class="sr-only" aria-hidden="true" tabindex="-1">
+                        <option value="">Select account type</option>
+                        <option value="holder">Holder</option>
+                        <option value="issuer">Issuer</option>
+                        <option value="verifier">Verifier (Organization)</option>
+                    </select>
+
+        
+                    <div class="vs-select" id="roleSelect">
+                        <button type="button" class="vs-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                            <span class="vs-select-value">Select account type</span>
+                            <span class="vs-select-caret"></span>
+                        </button>
+
+                        <div class="vs-select-menu" role="listbox" aria-label="Account type">
+                            <button type="button" class="vs-option" data-value="holder">Holder</button>
+                            <button type="button" class="vs-option" data-value="issuer">Issuer</button>
+                            <button type="button" class="vs-option" data-value="verifier">Verifier
+                                (Organization)</button>
+                        </div>
+                    </div>
+
+                    <div id="role-dependent-fields" class="hidden" aria-live="polite">
+
+                        <div id="holder-fields" class="role-fields hidden">
+                            <label for="holderName">
+                                Full name (as on issued documents)
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="holderName" type="text" required autocomplete="name">
+
+                            <label for="holderCountry">
+                                Country of residence
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <select id="holderCountry" required autocomplete="country-name"></select>
+
+                            <label for="holderEmail">
+                                Email address
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="holderEmail" type="email" required autocomplete="email">
+
+                            <label for="holderPassword">
+                                Password
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="holderPassword" type="password" minlength="8" required
+                                autocomplete="new-password" aria-describedby="holderPasswordHint">
+                            <p class="field-hint" id="holderPasswordHint">Must be at least 8 characters</p>
+
+                            <label for="holderPasswordConfirm">
+                                Confirm password
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="holderPasswordConfirm" type="password" minlength="8" required
+                                autocomplete="new-password">
+                        </div>
+
+                        <div id="issuer-fields" class="role-fields hidden">
+                            <label for="issuerOrgName">
+                                Organization name
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="issuerOrgName" type="text" required autocomplete="organization">
+
+                            <label for="issuerOrgType">
+                                Organization type
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <select id="issuerOrgType" required>
+                                <option value="">Select type</option>
+                                <option>Government</option>
+                                <option>Educational</option>
+                                <option>Financial</option>
+                                <option>Corporate</option>
+                                <option>Non-profit</option>
+                                <option>Other</option>
+                            </select>
+
+                            <label for="issuerOrgEmail">
+                                Official organization email
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="issuerOrgEmail" type="email" required autocomplete="email">
+
+                            <label for="issuerContactName">
+                                Contact person full name
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="issuerContactName" type="text" required autocomplete="name">
+
+                            <label for="issuerContactEmail">
+                                Contact person email
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="issuerContactEmail" type="email" required autocomplete="email">
+
+                            <label for="issuerCountry">
+                                Country / jurisdiction
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <select id="issuerCountry" required autocomplete="country-name"></select>
+
+                            <label for="issuerPassword">
+                                Password
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="issuerPassword" type="password" minlength="8" required
+                                autocomplete="new-password" aria-describedby="issuerPasswordHint">
+                            <p class="field-hint" id="issuerPasswordHint">Must be at least 8 characters</p>
+
+                            <label for="issuerPasswordConfirm">
+                                Confirm password
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="issuerPasswordConfirm" type="password" minlength="8" required
+                                autocomplete="new-password">
+
+                            <p class="auth-note">
+                                Issuer accounts require approval before credentials can be issued.
+                            </p>
+                        </div>
+
+                        <div id="verifier-fields" class="role-fields hidden">
+                            <label for="verifierOrgName">
+                                Organization name
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="verifierOrgName" type="text" required autocomplete="organization">
+
+                            <label for="verifierOrgType">
+                                Organization type
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <select id="verifierOrgType" required>
+                                <option value="">Select type</option>
+                                <option>Government</option>
+                                <option>Educational</option>
+                                <option>Financial</option>
+                                <option>Corporate</option>
+                                <option>Non-profit</option>
+                                <option>Other</option>
+                            </select>
+
+                            <label for="verifierOrgEmail">
+                                Official organization email
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="verifierOrgEmail" type="email" required autocomplete="email">
+
+                            <label for="verifierContactName">
+                                Contact person full name
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="verifierContactName" type="text" required autocomplete="name">
+
+                            <label for="verifierContactEmail">
+                                Contact person email
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="verifierContactEmail" type="email" required autocomplete="email">
+
+                            <label for="verifierCountry">
+                                Country / jurisdiction
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <select id="verifierCountry" required autocomplete="country-name"></select>
+
+                            <label for="verifierPassword">
+                                Password
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="verifierPassword" type="password" minlength="8" required
+                                autocomplete="new-password" aria-describedby="verifierPasswordHint">
+                            <p class="field-hint" id="verifierPasswordHint">Must be at least 8 characters</p>
+
+                            <label for="verifierPasswordConfirm">
+                                Confirm password
+                                <span class="required-hint">Required</span>
+                            </label>
+                            <input id="verifierPasswordConfirm" type="password" minlength="8" required
+                                autocomplete="new-password">
+
+                            <p class="auth-note">
+                                Verifier accounts are for organizations only. Your organization will be able to verify
+                                credentials that have been shared with you.
+                            </p>
+                        </div>
+
+                        <div class="legal-section">
+                            <label class="checkbox-row checkbox-right">
+                                <span>I agree to the <a href="#">Terms of Service</a></span>
+                                <input type="checkbox" required>
+                            </label>
+
+                            <label class="checkbox-row checkbox-right">
+                                <span>I have read the <a href="#">Privacy Policy</a></span>
+                                <input type="checkbox" required>
+                            </label>
+
+                            <label class="checkbox-row checkbox-right">
+                                <span>I consent to the processing of my data for verification purposes</span>
+                                <input type="checkbox" required>
+                            </label>
+                        </div>
+
+                        <!-- keep as button (auth.js uses click handler). Leave disabled logic to auth.js -->
+                        <button type="button" class="btn-primary auth-btn" id="signupBtn" disabled>
+                            Create Account
+                        </button>
+                    </div>
+
+                    <p class="auth-switch">
+                        Already have an account? <a href="login.html">Login</a>
+                    </p>
+
+                </form>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="landing-footer">
+        VeriSure enforces issuer sovereignty and cryptographic trust.
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script src="js/auth.js"></script>
+
+    <script>
+        const signupBtn = document.getElementById("signupBtn");
+        if (signupBtn) {
+            signupBtn.addEventListener("click", signup);
+        }
+
+       
+        const signupForm = document.getElementById("signupForm");
+        if (signupForm) {
+            signupForm.addEventListener("submit", (e) => e.preventDefault());
+        }
+    </script>
+
+    <script>
+        (function () {
+            const realSelect = document.getElementById("role");
+            const ui = document.getElementById("roleSelect");
+            const trigger = ui.querySelector(".vs-select-trigger");
+            const valueEl = ui.querySelector(".vs-select-value");
+            const options = Array.from(ui.querySelectorAll(".vs-option"));
+
+            function close() {
+                ui.classList.remove("open");
+                trigger.setAttribute("aria-expanded", "false");
+            }
+
+            function open() {
+                ui.classList.add("open");
+                trigger.setAttribute("aria-expanded", "true");
+            }
+
+            trigger.addEventListener("click", () => {
+                ui.classList.contains("open") ? close() : open();
+            });
+
+            options.forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const v = btn.dataset.value;
+                    const label = btn.textContent.trim();
+
+                    valueEl.textContent = label;
+                    options.forEach(o => o.classList.remove("active"));
+                    btn.classList.add("active");
+
+                    realSelect.value = v;
+                    realSelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+                    close();
+                });
+            });
+
+            if (realSelect.value) {
+                const match = options.find(o => o.dataset.value === realSelect.value);
+                if (match) {
+                    valueEl.textContent = match.textContent.trim();
+                    match.classList.add("active");
+                }
+            }
+
+            document.addEventListener("click", (e) => {
+                if (!ui.contains(e.target)) close();
+            });
+
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Escape") close();
+            });
+        })();
+    </script>
+
+</body>
+
+</html>

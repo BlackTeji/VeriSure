@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>VeriSure Dev Access</title>
+    <link rel="stylesheet" href="assets/css/base.css">
+    <link rel="stylesheet" href="assets/css/layout.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+</head>
+
+<body style="padding:24px;">
+    <h2>Dev Access</h2>
+    <p>Select a role to enter the app.</p>
+
+    <select id="devRole">
+        <option value="holder">Holder</option>
+        <option value="issuer">Issuer</option>
+        <option value="verifier">Verifier</option>
+        <option value="admin">Admin</option>
+    </select>
+
+    <button id="go" class="btn-primary" style="margin-left:12px;">Enter</button>
+
+    <script>
+        const routes = {
+            holder: "/app/wallet.html",
+            issuer: "/app/issuer.html",
+            verifier: "/app/verify.html",
+            admin: "/app/admin.html"
+        };
+
+        document.getElementById("go").addEventListener("click", () => {
+            const role = document.getElementById("devRole").value;
+
+            localStorage.setItem("verisure_session", JSON.stringify({
+                email: "dev@verisure.local",
+                role,
+                entityId: role === "issuer" ? "ENT_DEV" : ""
+            }));
+
+            location.href = routes[role];
+        });
+    </script>
+</body>
+
+</html>

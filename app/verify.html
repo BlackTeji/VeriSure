@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Verify Credential — VeriSure</title>
+
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <link rel="stylesheet" href="../assets/css/layout.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+
+<body onload="protect();">
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="brand">VeriSure</div>
+            <nav class="side-links">
+                <a href="./verify.html" class="active">Verify Credential</a>
+                <a href="./verification-history.html">Verification History</a>
+            </nav>
+            <div class="hr"></div>
+            <button class="btn" type="button" onclick="Session.clear()">Logout</button>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <h1>Verify Credential</h1>
+                    <p>Verify credentials shared with your organization.</p>
+                </div>
+
+                <div class="controls" style="margin:0; gap:10px;">
+                    <button id="clearBtn" class="btn" type="button">Clear</button>
+                </div>
+            </div>
+
+            <div id="banner"></div>
+
+            <section class="card">
+                <h3 style="margin:0 0 8px;">Enter Credential ID</h3>
+                <p class="notice" style="margin-top:0;">
+                    Only credentials shared with your organization can be verified here.
+                </p>
+
+                <div class="controls" style="gap:10px; flex-wrap:wrap;">
+                    <input id="credId" class="input" placeholder="Credential ID" style="min-width:260px;">
+                    <button id="verifyBtn" class="btn primary" type="button" disabled>Verify</button>
+                </div>
+            </section>
+
+            <div style="height:14px;"></div>
+            <div id="result"></div>
+        </main>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/dashboard.js"></script>
+
+    <script>
+        (function () {
+            const session = Session.get();
+            if (!session) { location.href = "../login.html"; return; }
+
+            if (session.role !== "verifier") {
+                showBanner("error", "Please log in as a verifier organization to use this page.");
+                document.getElementById("verifyBtn").disabled = true;
+                return;
+            }
+
+            if (!session.entityId) {
+                showBanner("error", "Verifier entityId missing. Please log in again.");
+                document.getElementById("verifyBtn").disabled = true;
+                return;
+            }
+
+            const input = document.getElementById("credId");
+            const btn = document.getElementById("verifyBtn");
+            const clearBtn = document.getElementById("clearBtn");
+            const resultEl = document.getElementById("result");
+
+            function postForm(payload) {
+                return fetch(API_URL, {
+                    method: "POST",
+                    body: new URLSearchParams(payload)
+                }).then(async (r) => {
+                    const text = await r.text();
+                    try { return JSON.parse(text); } catch { return { error: true, message: text }; }
+                });
+            }
+
+            function setLoading(v) {
+                btn.disabled = !!v;
+                btn.textContent = v ? "Verifying..." : "Verify";
+            }
+
+            function safe(v) {
+                return String(v ?? "").replace(/[&<>"']/g, m => ({
+                    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+                }[m]));
+            }
+
+            function statusPill(status) {
+                status = String(status || "").toLowerCase();
+                if (status === "active") return `<span class="pill pill-success">Active</span>`;
+                if (status === "frozen") return `<span class="pill pill-warning">Frozen</span>`;
+                if (status === "revoked") return `<span class="pill pill-danger">Revoked</span>`;
+                return `<span class="pill pill-danger">Invalid</span>`;
+            }
+
+            function verdictPill(issuerOk, hashOk, status) {
+                status = String(status || "").toLowerCase();
+                if (!issuerOk || !hashOk) return `<span class="pill pill-danger">Invalid</span>`;
+                if (status === "active") return `<span class="pill pill-success">Valid</span>`;
+                if (status === "frozen") return `<span class="pill pill-warning">Frozen</span>`;
+                if (status === "revoked") return `<span class="pill pill-danger">Revoked</span>`;
+                return `<span class="pill pill-danger">Invalid</span>`;
+            }
+
+            function formatDate(v) {
+                const s = String(v || "").trim();
+                if (!s) return "—";
+                return safe(s);
+            }
+
+            function renderResult(data, credId) {
+                if (!data) {
+                    resultEl.innerHTML = `<div class="empty">No response.</div>`;
+                    return;
+                }
+
+                if (data.error) {
+                    showBanner("error", data.error || data.message || "Verification failed.");
+                    resultEl.innerHTML = "";
+                    return;
+                }
+
+                if (data.exists !== true) {
+                    resultEl.innerHTML = `<div class="empty">Credential not found.</div>`;
+                    return;
+                }
+
+                const issuerOk = !!data.issuerApproved;
+                const hashOk = !!data.hashValid;
+
+                const issuerName = safe(data.issuerName || "—");
+                const issuerStatus = safe(data.issuerStatus || (issuerOk ? "approved" : "pending"));
+
+                const title = safe(data.credentialTitle || "—");
+                const type = safe(data.credentialType || "—");
+                const holderName = safe(data.holderName || "—");
+                const issuedAt = safe(data.issuedAt || "—");
+                const expiry = formatDate(data.expiryDate);
+                const status = String(data.status || "").toLowerCase();
+                const qrUrl = String(data.qrUrl || "").trim();
+
+                const qrLine = qrUrl
+                    ? `<div class="notice"><b>Verify link:</b> <span class="mono">${safe(qrUrl)}</span></div>`
+                    : "";
+
+                resultEl.innerHTML = `
+                    <section class="card">
+                        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;">
+                            <h3 style="margin:0;">Verification Result</h3>
+                            <div>${verdictPill(issuerOk, hashOk, status)}</div>
+                        </div>
+
+                        <div style="height:10px;"></div>
+
+                        <div class="notice">
+                            <div>✔ Credential exists</div>
+                            <div>${issuerOk ? "✔" : "✖"} Issuer approved <span style="opacity:.75;">(${issuerStatus})</span></div>
+                            <div>${hashOk ? "✔" : "✖"} Hash integrity valid</div>
+                        </div>
+
+                        <div style="height:12px;"></div>
+
+                        <div class="notice"><b>Credential title:</b> ${title}</div>
+                        <div class="notice"><b>Credential type:</b> ${type}</div>
+                        <div class="notice"><b>Holder name:</b> ${holderName}</div>
+                        <div class="notice"><b>Issuer:</b> ${issuerName}</div>
+                        <div class="notice"><b>Status:</b> ${statusPill(status)}</div>
+                        <div class="notice"><b>Issued:</b> ${issuedAt}</div>
+                        <div class="notice"><b>Expiry:</b> ${expiry}</div>
+                        <div class="notice"><b>Credential ID:</b> ${safe(credId)}</div>
+                        ${qrLine}
+
+                        ${(!issuerOk || !hashOk) ? `
+                            <div style="height:10px;"></div>
+                            <div class="notice">
+                                ${!issuerOk ? `<div><b>Reason:</b> Issuer not approved.</div>` : ""}
+                                ${!hashOk ? `<div><b>Reason:</b> Hash mismatch.</div>` : ""}
+                            </div>
+                        ` : ""}
+                    </section>
+                `;
+            }
+
+            function validate() {
+                btn.disabled = !input.value.trim();
+            }
+
+            async function verify() {
+                const credId = input.value.trim();
+                resultEl.innerHTML = "";
+
+                if (!credId) {
+                    showBanner("error", "Please enter a credential ID.");
+                    return;
+                }
+
+                setLoading(true);
+
+                const data = await postForm({
+                    action: "verify",
+                    credential_id: credId,
+                    verifier_email: session.email,
+                    verifier_entity_id: session.entityId
+                });
+
+                renderResult(data, credId);
+                setLoading(false);
+            }
+
+            function getParam(name) {
+                const u = new URL(window.location.href);
+                return u.searchParams.get(name);
+            }
+
+            btn.addEventListener("click", verify);
+
+            input.addEventListener("input", validate);
+            input.addEventListener("keydown", (e) => { if (e.key === "Enter") verify(); });
+
+            clearBtn.addEventListener("click", () => {
+                input.value = "";
+                resultEl.innerHTML = "";
+                validate();
+            });
+
+            const cid = getParam("cid");
+            if (cid) {
+                input.value = cid;
+                validate();
+                verify();
+                return;
+            }
+
+            validate();
+        })();
+    </script>
+</body>
+
+</html>
