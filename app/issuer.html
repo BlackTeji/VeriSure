@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="../assets/css/dashboard.css">
 </head>
 
-<body onload="protect();">
+<body>
     <div class="dashboard">
         <aside class="sidebar">
             <div class="brand">VeriSure</div>
@@ -24,7 +24,7 @@
                 <a href="./issuer-settings.html">Issuer Settings</a>
             </nav>
             <div class="hr"></div>
-            <button class="btn" type="button" onclick="Session.clear()">Logout</button>
+            <button class="btn" type="button" data-action="logout">Logout</button>
         </aside>
 
         <main class="main">
@@ -93,10 +93,6 @@
     <script>
         (function () {
 
-            /* =========================
-               Session guard
-            ========================= */
-
             const session = Session.get();
             if (!session || session.role !== "issuer") {
                 Session.clear();
@@ -107,10 +103,6 @@
             if (typeof setActiveSidebar === "function") setActiveSidebar("./issuer.html");
 
             const refreshBtn = document.getElementById("refreshBtn");
-
-            /* =========================
-               Network
-            ========================= */
 
             async function postForm(payload) {
                 const r = await fetch(API_URL, {
@@ -123,10 +115,6 @@
                 try { return JSON.parse(text); }
                 catch { return { error: "Invalid JSON response", raw: text }; }
             }
-
-            /* =========================
-               UI helpers
-            ========================= */
 
             function setText(id, val) {
                 const el = document.getElementById(id);
@@ -150,50 +138,73 @@
                 } catch { }
             }
 
-            /* =========================
-               Data
-            ========================= */
-
-            async function loadOverview() {
+            async function loadIssuerStatus_() {
                 if (!session.entityId) {
-                    showBanner("error", "Issuer entityId missing. Please log in again.");
-                    return;
+                    throw new Error("Issuer entityId missing. Please login again.");
                 }
 
-                setLoading(true);
+                const res = await postForm({
+                    action: "issuer_status",
+                    entity_id: session.entityId
+                });
 
-                const res = await postForm({ action: "issuer_status", entity_id: session.entityId });
+                if (res && res.error) throw new Error(res.error);
 
-                if (res && res.error) {
-                    showBanner("error", typeof res.error === "string" ? res.error : (res.message || "Failed to load issuer status."));
-                    setLoading(false);
-                    return;
-                }
-
-                const issuerName = res.issuerName || session.issuerName || "—";
-                const issuerStatus = res.issuerStatus || session.issuerStatus || "—";
+                const issuerName = res?.issuerName || session.issuerName || "—";
+                const issuerStatus = res?.issuerStatus || session.issuerStatus || "pending";
 
                 setText("issuerName", issuerName);
                 setText("issuerStatus", issuerStatus);
 
-                updateSessionIssuer_(res.issuerName, res.issuerStatus);
-
-                setText("k_issued", "—");
-                setText("k_active", "—");
-                setText("k_rf", "—");
-                setText("k_v30", "—");
-
-                const sub = document.getElementById("subline");
-                if (sub) sub.textContent = `Issuer overview for ${res.issuerName || "your institution"}.`;
-
-                setLoading(false);
-
-                if (typeof lockIssuerUntilApproved === "function") lockIssuerUntilApproved();
+                updateSessionIssuer_(issuerName, issuerStatus);
+                return { issuerName, issuerStatus };
             }
 
-            if (refreshBtn) refreshBtn.addEventListener("click", loadOverview);
+            async function loadIssuerCredentials_() {
+                if (!session.entityId) {
+                    throw new Error("Issuer entityId missing. Please login again.");
+                }
 
-            loadOverview();
+                const res = await postForm({
+                    action: "issuer_credentials",
+                    entity_id: session.entityId
+                });
+
+                if (res && res.error) throw new Error(res.error);
+
+                const list = Array.isArray(res?.credentials) ? res.credentials : [];
+
+                const total = list.length;
+                const active = list.filter(x => String(x.status || "").toLowerCase() === "active").length;
+                const rf = list.filter(x => {
+                    const s = String(x.status || "").toLowerCase();
+                    return s === "revoked" || s === "frozen";
+                }).length;
+
+                setText("k_issued", total);
+                setText("k_active", active);
+                setText("k_rf", rf);
+
+                return list;
+            }
+
+            async function refreshAll_() {
+                setLoading(true);
+                try {
+                    await loadIssuerStatus_();
+                    await loadIssuerCredentials_();
+                    setText("k_v30", "—");
+                } catch (e) {
+                    showBanner("error", e.message || "Failed to load issuer overview.");
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            refreshBtn?.addEventListener("click", refreshAll_);
+
+            lockIssuerUntilApproved();
+            refreshAll_();
         })();
     </script>
 </body>

@@ -61,6 +61,15 @@ function normalizeHeader(h) {
     return String(h || "").toLowerCase().trim().replace(/\s+/g, "_");
 }
 
+function escapeHTML(v) {
+    return String(v ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 function showErrors(msgs) {
     const box = document.getElementById("csvErrors");
     if (!box) return;
@@ -83,11 +92,11 @@ function renderPreview(headers, rows) {
     const thead = table.querySelector("thead");
     const tbody = table.querySelector("tbody");
 
-    if (thead) thead.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr>`;
+    if (thead) thead.innerHTML = `<tr>${headers.map(h => `<th>${escapeHTML(h)}</th>`).join("")}</tr>`;
     if (tbody) {
         tbody.innerHTML = rows
             .slice(0, 50)
-            .map(r => `<tr>${headers.map(h => `<td>${(r[h] ?? "")}</td>`).join("")}</tr>`)
+            .map(r => `<tr>${headers.map(h => `<td>${escapeHTML(r[h] ?? "")}</td>`).join("")}</tr>`)
             .join("");
     }
 

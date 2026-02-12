@@ -4,7 +4,16 @@ function setActiveSidebar(href) {
     });
 }
 
-function openConfirmModal({ title, message, confirmText = "Confirm", onConfirm }) {
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function openConfirmModal({ title, message, messageHtml = "", confirmText = "Confirm", onConfirm }) {
     const wrap = document.getElementById("vs-modal");
     const t = document.getElementById("vs-modal-title");
     const m = document.getElementById("vs-modal-msg");
@@ -14,17 +23,26 @@ function openConfirmModal({ title, message, confirmText = "Confirm", onConfirm }
     if (!wrap || !t || !m || !ok || !cancel) return;
 
     t.textContent = title || "";
-    m.textContent = message || "";
+    if (messageHtml) {
+        m.innerHTML = messageHtml;
+    } else {
+        m.textContent = message || "";
+    }
     ok.textContent = confirmText || "Confirm";
 
     ok.style.display = "";
     cancel.textContent = "Cancel";
     ok.disabled = false;
 
-    ok.onclick = () => {
+    ok.onclick = async () => {
         ok.disabled = true;
-        closeModal();
-        if (typeof onConfirm === "function") onConfirm();
+        try {
+            if (typeof onConfirm === "function") await onConfirm();
+            closeModal();
+        } catch (err) {
+            ok.disabled = false;
+            m.textContent = err?.message || "Action failed. Please try again.";
+        }
     };
 
     cancel.onclick = closeModal;
@@ -33,15 +51,17 @@ function openConfirmModal({ title, message, confirmText = "Confirm", onConfirm }
     wrap.setAttribute("aria-hidden", "false");
 }
 
-function openInfoModal({ title = "Info", html = "", okText = "OK" }) {
+function openInfoModal({ title = "Info", html = "", message = "", okText = "OK" }) {
     const wrap = document.getElementById("vs-modal");
     const t = document.getElementById("vs-modal-title");
     const m = document.getElementById("vs-modal-msg");
     const ok = document.getElementById("vs-modal-ok");
     const cancel = document.getElementById("vs-modal-cancel");
 
+    if (!wrap || !t || !m || !ok || !cancel) return;
+
     t.textContent = title;
-    m.innerHTML = html;
+    m.innerHTML = html || `<pre style="white-space:pre-wrap;margin:0;">${escapeHtml(message)}</pre>`;
     ok.textContent = okText;
 
     ok.style.display = "inline-flex";
@@ -51,6 +71,7 @@ function openInfoModal({ title = "Info", html = "", okText = "OK" }) {
     cancel.onclick = closeModal;
 
     wrap.classList.remove("hidden");
+    wrap.setAttribute("aria-hidden", "false");
 }
 
 

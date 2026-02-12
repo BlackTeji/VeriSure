@@ -1,4 +1,3 @@
-<!-- app/admin-issuers.html -->
 <!doctype html>
 <html lang="en">
 
@@ -11,44 +10,9 @@
     <link rel="stylesheet" href="../assets/css/layout.css">
     <link rel="stylesheet" href="../assets/css/components.css">
     <link rel="stylesheet" href="../assets/css/dashboard.css">
-
-    <style>
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .table th,
-        .table td {
-            text-align: left;
-            padding: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .mono {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        }
-
-        .row-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .filterbar {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .filterbar input {
-            min-width: 240px;
-        }
-    </style>
 </head>
 
-<body onload="protect();">
+<body>
     <div class="dashboard">
         <aside class="sidebar">
             <div class="brand">VeriSure</div>
@@ -60,7 +24,7 @@
                 <a href="./admin-metrics.html">System Metrics</a>
             </nav>
             <div class="hr"></div>
-            <button class="btn" onclick="Session.clear()">Logout</button>
+            <button class="btn" data-action="logout">Logout</button>
         </aside>
 
         <main class="main">
@@ -74,7 +38,7 @@
             <div id="banner"></div>
 
             <section class="card">
-                <div class="filterbar">
+                <div class="controls">
                     <input id="q" class="input" placeholder="Search by name or entity ID">
                     <select id="statusFilter" class="select">
                         <option value="">All statuses</option>
@@ -86,15 +50,14 @@
                 </div>
 
                 <div style="height:12px;"></div>
-
                 <div id="tableWrap"></div>
             </section>
 
             <div id="vs-modal" class="vs-modal-wrap hidden">
                 <div class="vs-modal">
                     <h3 id="vs-modal-title">Confirm</h3>
-                    <p id="vs-modal-msg">—</p>
-                    <div class="row">
+                    <p id="vs-modal-msg"></p>
+                    <div class="vs-modal-actions">
                         <button id="vs-modal-cancel" class="btn">Cancel</button>
                         <button id="vs-modal-ok" class="btn primary">Confirm</button>
                     </div>
@@ -105,147 +68,151 @@
 
     <script src="../js/app.js"></script>
     <script src="../js/dashboard.js"></script>
-
     <script>
-        function postForm(url, payload) {
-            return fetch(url, {
-                method: "POST",
-                body: new URLSearchParams(payload)
-            }).then(async (r) => {
-                const text = await r.text();
-                try { return JSON.parse(text); } catch { return { error: true, message: text }; }
-            });
+        const state = { all: [], filtered: [] };
+
+        function escapeHtml(s) {
+            return String(s ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
         }
-
-        const norm = v => String(v || "").trim().toLowerCase();
-        const esc = s => String(s ?? "").replace(/[&<>"']/g, m => ({
-            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
-        }[m]));
-
-        let ALL = [];
 
         function pill(status) {
-            status = norm(status);
-            if (status === "approved") return `<span class="pill pill-success">Approved</span>`;
-            if (status === "pending") return `<span class="pill pill-warning">Pending</span>`;
-            if (status === "suspended") return `<span class="pill pill-danger">Suspended</span>`;
-            return `<span class="pill">Unknown</span>`;
+            if (status === "approved") return `<span class="badge good">approved</span>`;
+            if (status === "pending") return `<span class="badge warn">pending</span>`;
+            if (status === "suspended") return `<span class="badge bad">suspended</span>`;
+            return `<span class="badge">${escapeHtml(status || "unknown")}</span>`;
         }
 
-        function render(issuers) {
-            const wrap = document.getElementById("tableWrap");
+        async function api(payload) {
+            const r = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                body: new URLSearchParams(payload).toString()
+            });
+            const t = await r.text();
+            try { return JSON.parse(t); } catch { return { error: "Invalid JSON response", raw: t }; }
+        }
 
-            if (!issuers.length) {
-                wrap.innerHTML = `<div class="empty">No issuers found.</div>`;
+        function applyFilters() {
+            const q = (document.getElementById("q").value || "").trim().toLowerCase();
+            const st = (document.getElementById("statusFilter").value || "").trim().toLowerCase();
+
+            state.filtered = state.all.filter(x => {
+                const matchesQ =
+                    !q ||
+                    String(x.name || "").toLowerCase().includes(q) ||
+                    String(x.id || "").toLowerCase().includes(q);
+
+                const matchesSt = !st || String(x.status || "").toLowerCase() === st;
+                return matchesQ && matchesSt;
+            });
+
+            renderTable();
+        }
+
+        function renderTable() {
+            const wrap = document.getElementById("tableWrap");
+            const rows = state.filtered;
+
+            if (!rows.length) {
+                wrap.innerHTML = `<div class="empty">No issuers match your filters.</div>`;
                 return;
             }
 
             wrap.innerHTML = `
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Entity ID</th>
-                      <th>Status</th>
-                      <th style="width:260px;">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="issuerTbody">
-                    ${issuers.map(i => `
-                      <tr>
-                        <td>${esc(i.name || "—")}</td>
-                        <td class="mono">${esc(i.id)}</td>
-                        <td>${pill(i.status)}</td>
-                        <td>
-                          <div class="row-actions">
-                            <button class="btn primary" ${norm(i.status) === "approved" ? "disabled" : ""} data-approve="${esc(i.id)}">Approve</button>
-                            <button class="btn" ${norm(i.status) === "suspended" ? "disabled" : ""} data-suspend="${esc(i.id)}">Suspend</button>
-                          </div>
-                        </td>
-                      </tr>
-                    `).join("")}
-                  </tbody>
-                </table>
-            `;
-        }
-
-        function applyFilters() {
-            const q = norm(document.getElementById("q").value);
-            const sf = norm(document.getElementById("statusFilter").value);
-
-            let out = ALL.slice();
-
-            if (sf) out = out.filter(i => norm(i.status) === sf);
-            if (q) out = out.filter(i => norm(i.name).includes(q) || norm(i.id).includes(q));
-
-            render(out);
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Entity ID</th>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Country</th>
+              <th style="width:260px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td class="mono">${escapeHtml(r.id)}</td>
+                <td>${escapeHtml(r.name)}</td>
+                <td>${pill(String(r.status || "").toLowerCase())}</td>
+                <td>${escapeHtml(r.country || "—")}</td>
+                <td>
+                  <div class="controls" style="margin:0;">
+                    <button class="btn primary" ${r.status === "approved" ? "disabled" : ""} data-action="approve" data-id="${escapeHtml(r.id)}">Approve</button>
+                    <button class="btn" ${r.status === "suspended" ? "disabled" : ""} data-action="suspend" data-id="${escapeHtml(r.id)}">Suspend</button>
+                  </div>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
         }
 
         async function loadIssuers() {
+            const data = await api({ action: "listIssuers" });
+            if (data.error) throw new Error(data.error);
+
+            state.all = Array.isArray(data.issuers) ? data.issuers : [];
+            state.filtered = [...state.all];
+            renderTable();
+        }
+
+        async function changeStatus(entityId, action, label) {
+            openConfirmModal({
+                title: `${label} issuer`,
+                message: `Are you sure you want to ${label.toLowerCase()} this issuer?`,
+                confirmText: label,
+                onConfirm: async () => {
+                    const data = await api({ action, entity_id: entityId });
+                    if (data.error) throw new Error(data.error);
+                    showBanner("success", `Issuer ${label.toLowerCase()}d successfully.`);
+                    await loadIssuers();
+                    applyFilters();
+                }
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", async () => {
             const s = Session.get();
-            if (!s || s.role !== "admin") {
-                showBanner("error", "Unauthorized. Please log in as admin.");
-                return;
-            }
+            if (!s || s.role !== "admin") return Session.clear();
 
-            const wrap = document.getElementById("tableWrap");
-            wrap.innerHTML = `<div class="empty">Loading…</div>`;
-
-            const res = await postForm(API_URL, { action: "listIssuers" });
-            if (res && res.error) {
-                showBanner("error", res.error || res.message || "Failed to load issuers.");
-                wrap.innerHTML = `<div class="empty">Failed to load.</div>`;
-                return;
-            }
-
-            ALL = Array.isArray(res.issuers) ? res.issuers : [];
-            applyFilters();
-        }
-
-        function approve(entityId) {
-            openConfirmModal({
-                title: "Approve issuer",
-                message: `Approve issuer access for ${entityId}?`,
-                confirmText: "Approve",
-                onConfirm: async () => {
-                    const res = await postForm(API_URL, { action: "approveIssuer", entity_id: entityId });
-                    if (res && res.error) return showBanner("error", res.error || res.message || "Approve failed.");
-                    showBanner("success", "Issuer approved.");
-                    loadIssuers();
+            document.getElementById("q").addEventListener("input", applyFilters);
+            document.getElementById("statusFilter").addEventListener("change", applyFilters);
+            document.getElementById("refreshBtn").addEventListener("click", async () => {
+                try {
+                    await loadIssuers();
+                    applyFilters();
+                    showBanner("success", "Refreshed");
+                } catch (e) {
+                    showBanner("error", e.message || "Refresh failed");
                 }
             });
-        }
 
-        function suspend(entityId) {
-            openConfirmModal({
-                title: "Suspend issuer",
-                message: `Suspend issuer access for ${entityId}?`,
-                confirmText: "Suspend",
-                onConfirm: async () => {
-                    const res = await postForm(API_URL, { action: "suspendIssuer", entity_id: entityId });
-                    if (res && res.error) return showBanner("error", res.error || res.message || "Suspend failed.");
-                    showBanner("success", "Issuer suspended.");
-                    loadIssuers();
+            document.getElementById("tableWrap").addEventListener("click", (e) => {
+                const btn = e.target.closest("button[data-action][data-id]");
+                if (!btn) return;
+
+                const entityId = btn.dataset.id;
+                const action = btn.dataset.action;
+
+                if (action === "approve") {
+                    changeStatus(entityId, "approveIssuer", "Approve");
+                } else if (action === "suspend") {
+                    changeStatus(entityId, "suspendIssuer", "Suspend");
                 }
             });
-        }
 
-        document.getElementById("q").addEventListener("input", applyFilters);
-        document.getElementById("statusFilter").addEventListener("change", applyFilters);
-        document.getElementById("refreshBtn").addEventListener("click", loadIssuers);
-
-        document.getElementById("tableWrap").addEventListener("click", (e) => {
-            const btn = e.target.closest("button");
-            if (!btn) return;
-
-            const a = btn.getAttribute("data-approve");
-            const s = btn.getAttribute("data-suspend");
-
-            if (a) approve(a);
-            if (s) suspend(s);
+            try {
+                await loadIssuers();
+                applyFilters();
+            } catch (e) {
+                showBanner("error", e.message || "Failed to load issuers");
+            }
         });
-
-        loadIssuers();
     </script>
 </body>
 

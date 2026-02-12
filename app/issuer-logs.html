@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Issuer Activity & Logs — VeriSure</title>
+
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <link rel="stylesheet" href="../assets/css/layout.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+
+<body>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="brand">VeriSure</div>
+            <nav class="side-links">
+                <a href="./issuer.html">Overview</a>
+                <a href="./issue.html">Issue Credential</a>
+                <a href="./issued.html">Issued Credentials</a>
+                <a href="./issuer-logs.html" class="active">Activity & Logs</a>
+                <a href="./issuer-settings.html">Issuer Settings</a>
+            </nav>
+            <div class="hr"></div>
+            <button class="btn" type="button" data-action="logout">Logout</button>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <h1>Activity & Logs</h1>
+                    <p>Operational snapshot of your latest issued credentials.</p>
+                </div>
+                <div class="controls" style="margin:0; gap:10px;">
+                    <button id="refreshBtn" class="btn" type="button">Refresh</button>
+                </div>
+            </div>
+
+            <div id="banner"></div>
+
+            <section class="grid-3">
+                <div class="card kpi">
+                    <div class="label">Total</div>
+                    <div class="value" id="kTotal">—</div>
+                </div>
+                <div class="card kpi">
+                    <div class="label">Latest issued at</div>
+                    <div class="value" id="kLatest" style="font-size:14px;">—</div>
+                </div>
+                <div class="card kpi">
+                    <div class="label">Status mix</div>
+                    <div class="value" id="kMix" style="font-size:14px;">—</div>
+                </div>
+            </section>
+
+            <div style="height:14px;"></div>
+
+            <section class="card">
+                <h3 style="margin:0 0 8px;">Recent activity</h3>
+                <p class="notice" style="margin-top:0;">Showing the latest 25 credentials from your issuer registry as a
+                    practical activity feed.</p>
+                <div id="activityWrap" class="empty">Loading…</div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/dashboard.js"></script>
+    <script>
+        (function () {
+            const s = Session.get();
+            if (!s || s.role !== "issuer") {
+                Session.clear();
+                location.href = "../login.html";
+                return;
+            }
+
+            const refreshBtn = document.getElementById("refreshBtn");
+            const wrap = document.getElementById("activityWrap");
+
+            function esc(v) {
+                return String(v ?? "").replace(/[&<>"']/g, m => ({
+                    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+                }[m]));
+            }
+
+            function badge(st) {
+                const s = String(st || "").toLowerCase();
+                if (s === "active") return '<span class="badge good">active</span>';
+                if (s === "frozen") return '<span class="badge warn">frozen</span>';
+                return '<span class="badge bad">revoked</span>';
+            }
+
+            async function postForm(payload) {
+                const r = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                    body: new URLSearchParams(payload).toString()
+                });
+                const text = await r.text();
+                try { return JSON.parse(text); }
+                catch { return { error: "Invalid server response", raw: text }; }
+            }
+
+            function render(creds) {
+                const total = creds.length;
+                const latest = total ? String(creds[0].issued_at || "—") : "—";
+                const active = creds.filter(c => String(c.status).toLowerCase() === "active").length;
+                const frozen = creds.filter(c => String(c.status).toLowerCase() === "frozen").length;
+                const revoked = creds.filter(c => String(c.status).toLowerCase() === "revoked").length;
+
+                document.getElementById("kTotal").textContent = total;
+                document.getElementById("kLatest").textContent = latest;
+                document.getElementById("kMix").textContent = `A:${active} · F:${frozen} · R:${revoked}`;
+
+                if (!total) {
+                    wrap.innerHTML = '<div class="empty">No issuer activity yet.</div>';
+                    return;
+                }
+
+                const rows = creds.slice(0, 25).map(c => `
+                    <tr>
+                        <td><a class="mono" href="./issued-view.html?id=${encodeURIComponent(c.id)}">${esc(c.id)}</a></td>
+                        <td>${esc(c.title || "—")}</td>
+                        <td>${esc(c.holder_email || "—")}</td>
+                        <td>${badge(c.status)}</td>
+                        <td>${esc(c.issued_at || "—")}</td>
+                    </tr>
+                `).join("");
+
+                wrap.innerHTML = `
+                    <table class="table">
+                        <thead><tr><th>Credential ID</th><th>Title</th><th>Holder</th><th>Status</th><th>Issued at</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                `;
+            }
+
+            async function load() {
+                if (!s.entityId) return showBanner("error", "Issuer entityId missing. Please login again.");
+                refreshBtn.disabled = true;
+                refreshBtn.textContent = "Refreshing…";
+                wrap.innerHTML = '<div class="empty">Loading…</div>';
+
+                const res = await postForm({ action: "issuer_credentials", entity_id: s.entityId });
+                if (res?.error) {
+                    showBanner("error", res.error);
+                    wrap.innerHTML = '<div class="empty">Failed to load activity.</div>';
+                } else {
+                    render(Array.isArray(res.credentials) ? res.credentials : []);
+                }
+
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = "Refresh";
+            }
+
+            refreshBtn.addEventListener("click", load);
+            lockIssuerUntilApproved();
+            load();
+        })();
+    </script>
+</body>
+
+</html>

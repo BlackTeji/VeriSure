@@ -242,13 +242,11 @@ async function signup() {
 
         const res = await postForm(payload);
 
-        // hard-fail if server says error
         if (res?.error) {
             showBanner("error", res.error);
             return;
         }
 
-        
         const ok = res?.success === true || res?.email || res?.role;
         if (!ok) {
             console.warn("Unexpected signup response:", res);
@@ -318,7 +316,7 @@ async function login() {
     }
 }
 
-/* ---------- Prefill login email + auto role (and sync custom select UI) ---------- */
+/* ---------- Prefill login email + auto role ---------- */
 function setVsSelectValue(selectId, wrapperId, value) {
     const select = document.getElementById(selectId);
     if (!select) return;
@@ -383,33 +381,11 @@ document.addEventListener("DOMContentLoaded", () => {
 /* ---------- Country dropdown ---------- */
 document.addEventListener("DOMContentLoaded", () => {
     const COUNTRIES = [
-        "Argentina",
-        "Australia",
-        "Brazil",
-        "Canada",
-        "China",
-        "Egypt",
-        "France",
-        "Germany",
-        "Ghana",
-        "India",
-        "Japan",
-        "Kenya",
-        "Mexico",
-        "Morocco",
-        "Netherlands",
-        "Nigeria",
-        "Rwanda",
-        "Saudi Arabia",
-        "Singapore",
-        "South Africa",
-        "Tanzania",
-        "Uganda",
-        "United Arab Emirates",
-        "United Kingdom",
-        "United States",
-        "Zambia",
-        "Zimbabwe"
+        "Argentina", "Australia", "Brazil", "Canada", "China", "Egypt", "France",
+        "Germany", "Ghana", "India", "Japan", "Kenya", "Mexico", "Morocco",
+        "Netherlands", "Nigeria", "Rwanda", "Saudi Arabia", "Singapore",
+        "South Africa", "Tanzania", "Uganda", "United Arab Emirates",
+        "United Kingdom", "United States", "Zambia", "Zimbabwe"
     ];
 
     const countrySelects = document.querySelectorAll("select[id$='Country']");

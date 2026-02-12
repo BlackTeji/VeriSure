@@ -50,26 +50,12 @@
                         Account type <span class="required-hint">Required</span>
                     </label>
 
-                    <select id="loginRole" required class="sr-only" aria-hidden="true" tabindex="-1">
+                    <select id="loginRole" required>
                         <option value="">Select account type</option>
                         <option value="holder">Holder</option>
                         <option value="issuer">Issuer</option>
                         <option value="verifier">Verifier (Organization)</option>
                     </select>
-
-                    <div class="vs-select" id="loginRoleSelect">
-                        <button type="button" class="vs-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-                            <span class="vs-select-value">Select account type</span>
-                            <span class="vs-select-caret"></span>
-                        </button>
-
-                        <div class="vs-select-menu" role="listbox" aria-label="Account type">
-                            <button type="button" class="vs-option" data-value="holder">Holder</button>
-                            <button type="button" class="vs-option" data-value="issuer">Issuer</button>
-                            <button type="button" class="vs-option" data-value="verifier">Verifier
-                                (Organization)</button>
-                        </div>
-                    </div>
 
                     <label for="loginEmail">
                         Email address <span class="required-hint">Required</span>
@@ -133,57 +119,6 @@
         if (loginForm) loginForm.addEventListener("submit", (e) => e.preventDefault());
     </script>
 
-    <script>
-        (function () {
-            const realSelect = document.getElementById("loginRole");
-            const ui = document.getElementById("loginRoleSelect");
-            const trigger = ui.querySelector(".vs-select-trigger");
-            const valueEl = ui.querySelector(".vs-select-value");
-            const options = Array.from(ui.querySelectorAll(".vs-option"));
-
-            function close() {
-                ui.classList.remove("open");
-                trigger.setAttribute("aria-expanded", "false");
-            }
-
-            function open() {
-                ui.classList.add("open");
-                trigger.setAttribute("aria-expanded", "true");
-            }
-
-            function setValue(v, label, activeBtn) {
-                valueEl.textContent = label;
-                options.forEach(o => o.classList.remove("active"));
-                if (activeBtn) activeBtn.classList.add("active");
-                realSelect.value = v;
-                realSelect.dispatchEvent(new Event("change", { bubbles: true }));
-            }
-
-            trigger.addEventListener("click", () => {
-                ui.classList.contains("open") ? close() : open();
-            });
-
-            options.forEach(btn => {
-                btn.addEventListener("click", () => {
-                    setValue(btn.dataset.value, btn.textContent.trim(), btn);
-                    close();
-                });
-            });
-
-            if (realSelect.value) {
-                const match = options.find(o => o.dataset.value === realSelect.value);
-                if (match) setValue(realSelect.value, match.textContent.trim(), match);
-            }
-
-            document.addEventListener("click", (e) => {
-                if (!ui.contains(e.target)) close();
-            });
-
-            document.addEventListener("keydown", (e) => {
-                if (e.key === "Escape") close();
-            });
-        })();
-    </script>
 
 </body>
 

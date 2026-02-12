@@ -42,7 +42,6 @@ function protect() {
 function renderNav() {
     const session = Session.get();
     const nav = document.querySelector(".nav-links");
-    const logoutBtn = document.querySelector(".btn-ghost");
 
     if (!session || !nav) return;
 
@@ -62,7 +61,6 @@ function renderNav() {
         nav.appendChild(a);
     });
 
-    if (logoutBtn) logoutBtn.onclick = Session.clear;
 }
 
 /* ======================
@@ -216,13 +214,19 @@ function lockIssuerUntilApproved() {
     poll();
 }
 
-/* ======================
-   INIT
-====================== */
-document.addEventListener("DOMContentLoaded", () => {
+
+function bindSessionActions() {
+    document.querySelectorAll('[data-action="logout"]').forEach(btn => {
+        btn.addEventListener('click', () => Session.clear());
+    });
+}
+
+function initAppGuards() {
     protect();
     renderNav();
-
+    bindSessionActions();
 
     lockIssuerUntilApproved();
-});
+}
+
+document.addEventListener("DOMContentLoaded", initAppGuards);

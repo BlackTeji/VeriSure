@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Issuer Settings — VeriSure</title>
+
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <link rel="stylesheet" href="../assets/css/layout.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+
+<body>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="brand">VeriSure</div>
+            <nav class="side-links">
+                <a href="./issuer.html">Overview</a>
+                <a href="./issue.html">Issue Credential</a>
+                <a href="./issued.html">Issued Credentials</a>
+                <a href="./issuer-logs.html">Activity & Logs</a>
+                <a href="./issuer-settings.html" class="active">Issuer Settings</a>
+            </nav>
+            <div class="hr"></div>
+            <button class="btn" type="button" data-action="logout">Logout</button>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <h1>Issuer Settings</h1>
+                    <p>Profile and status context for your issuer authority.</p>
+                </div>
+            </div>
+
+            <div id="banner"></div>
+
+            <section class="card">
+                <h3 style="margin:0 0 8px;">Account snapshot</h3>
+                <div class="grid-2">
+                    <div class="kv">
+                        <div class="k">Email</div>
+                        <div class="v" id="fEmail">—</div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">Role</div>
+                        <div class="v" id="fRole">—</div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">Entity ID</div>
+                        <div class="v mono" id="fEntity">—</div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">Issuer status</div>
+                        <div class="v" id="fStatus">—</div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">Issuer name</div>
+                        <div class="v" id="fName">—</div>
+                    </div>
+                </div>
+                <div style="height:12px"></div>
+                <p class="notice">To change organization profile fields or ownership settings, contact a platform
+                    administrator.</p>
+            </section>
+
+            <div style="height:14px"></div>
+
+            <section class="card">
+                <h3 style="margin:0 0 8px;">Safety actions</h3>
+                <div class="controls" style="gap:10px;">
+                    <a href="../reset-password.html" class="btn">Reset password</a>
+                    <button class="btn" type="button" id="refreshBtn">Refresh status</button>
+                    <button class="btn bad" type="button" data-action="logout">Logout</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script>
+        (function () {
+            const s = Session.get();
+            if (!s || s.role !== "issuer") {
+                Session.clear();
+                location.href = "../login.html";
+                return;
+            }
+
+            const set = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = (val === undefined || val === null || val === "") ? "—" : String(val);
+            };
+
+            async function postForm(payload) {
+                const r = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                    body: new URLSearchParams(payload).toString()
+                });
+                const text = await r.text();
+                try { return JSON.parse(text); }
+                catch { return { error: "Invalid server response", raw: text }; }
+            }
+
+            async function refreshStatus() {
+                if (!s.entityId) return showBanner("error", "Issuer entityId missing.");
+                const res = await postForm({ action: "issuer_status", entity_id: s.entityId });
+                if (res?.error) return showBanner("error", res.error);
+
+                Session.set({ ...Session.get(), issuerStatus: res.issuerStatus || s.issuerStatus, issuerName: res.issuerName || s.issuerName });
+                set("fStatus", res.issuerStatus || s.issuerStatus);
+                set("fName", res.issuerName || s.issuerName);
+                showBanner("success", "Issuer status refreshed.");
+            }
+
+            set("fEmail", s.email);
+            set("fRole", s.role);
+            set("fEntity", s.entityId);
+            set("fStatus", s.issuerStatus || "pending");
+            set("fName", s.issuerName || "—");
+
+            document.getElementById("refreshBtn").addEventListener("click", refreshStatus);
+            lockIssuerUntilApproved();
+        })();
+    </script>
+</body>
+
+</html>

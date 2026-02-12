@@ -17,7 +17,6 @@
     <header class="navbar">
         <span>VeriSure</span>
 
-        <!-- Public nav (per PRD: Verify/Issue redirect to login) -->
         <nav class="nav-links">
             <a href="index.html">Home</a>
             <a href="login.html">Verify</a>
@@ -27,7 +26,6 @@
     </header>
 
     <main>
-
         <section class="hero-section fade-in">
             <h1>Verify Credentials. Without Central Control.</h1>
             <p>
@@ -41,7 +39,6 @@
                 <a href="login.html"><button class="btn-ghost">Login</button></a>
             </div>
 
-            <!-- Secondary CTAs (explicit entry points) -->
             <div class="hero-actions" style="margin-top: 12px;">
                 <a href="login.html"><button class="btn-ghost">Verify a credential</button></a>
                 <a href="login.html"><button class="btn-ghost">Issue credentials</button></a>
@@ -74,18 +71,9 @@
                 <h3>Built for Every Role in Verification</h3>
 
                 <ul>
-                    <li>
-                        <strong>Issuers</strong> issue credentials they fully control, with no risk
-                        of external tampering.
-                    </li>
-                    <li>
-                        <strong>Holders</strong> receive credentials in secure wallets and share
-                        them without surrendering ownership.
-                    </li>
-                    <li>
-                        <strong>Verifiers (Organizations)</strong> confirm authenticity instantly using cryptographic
-                        checks — not phone calls or PDFs.
-                    </li>
+                    <li><strong>Issuers</strong> issue credentials they fully control.</li>
+                    <li><strong>Holders</strong> receive credentials in secure wallets.</li>
+                    <li><strong>Verifiers</strong> confirm authenticity instantly.</li>
                 </ul>
             </div>
 
@@ -95,13 +83,9 @@
         </section>
 
         <section class="split-section">
-
             <div class="split-text fade-in">
                 <h3>Credential Lifecycle</h3>
-                <p>
-                    Credentials move through a clear, verifiable flow without central control.
-                </p>
-
+                <p>Credentials move through a clear, verifiable flow without central control.</p>
                 <ul>
                     <li>Issuers create and sign credentials</li>
                     <li>Holders store and present credentials</li>
@@ -111,7 +95,6 @@
 
             <div class="split-visual lifecycle-visual">
                 <svg viewBox="0 0 240 200" class="lifecycle-diagram" aria-label="Credential lifecycle diagram">
-
                     <defs>
                         <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
                             <path d="M0,0 L6,3 L0,6 Z" fill="#64748b" />
@@ -119,23 +102,18 @@
                     </defs>
 
                     <circle cx="120" cy="100" r="70" fill="none" stroke="#e5e7eb" stroke-width="2" />
-
                     <path d="M120 30 A70 70 0 0 1 190 100" fill="none" stroke="#64748b" stroke-width="2"
                         marker-end="url(#arrow)" />
-
                     <path d="M190 100 A70 70 0 0 1 120 170" fill="none" stroke="#64748b" stroke-width="2"
                         marker-end="url(#arrow)" />
-
                     <path d="M120 170 A70 70 0 0 1 50 100" fill="none" stroke="#64748b" stroke-width="2"
                         marker-end="url(#arrow)" />
 
                     <text x="127" y="18" text-anchor="middle" class="diagram-label">Issuer</text>
                     <text x="240" y="98" text-anchor="end" class="diagram-label">Holder</text>
                     <text x="127" y="192" text-anchor="middle" class="diagram-label">Verifier</text>
-
                 </svg>
             </div>
-
         </section>
 
         <section class="clients-section fade-in">
@@ -145,25 +123,19 @@
                 <div class="logo-track">
                     <img src="assets/logos/university.svg" alt="University">
                     <img src="assets/logos/certification.svg" alt="Certification Body">
-                    <img src="assets/logos/regulator.svg" alt="Regulatory Agency">
                     <img src="assets/logos/employer.svg" alt="Employer">
-                    <img src="assets/logos/audit.svg" alt="Audit Firm">
-                    <img src="assets/logos/platform.svg" alt="Platform Partner">
-
-                    <img src="assets/logos/university.svg" alt="">
-                    <img src="assets/logos/certification.svg" alt="">
-                    <img src="assets/logos/regulator.svg" alt="">
-                    <img src="assets/logos/employer.svg" alt="">
-                    <img src="assets/logos/audit.svg" alt="">
-                    <img src="assets/logos/platform.svg" alt="">
+                    <img src="assets/logos/government.svg" alt="Government">
+                    <img src="assets/logos/university.svg" alt="University">
+                    <img src="assets/logos/certification.svg" alt="Certification Body">
+                    <img src="assets/logos/employer.svg" alt="Employer">
+                    <img src="assets/logos/government.svg" alt="Government">
                 </div>
             </div>
         </section>
-
     </main>
 
     <footer class="landing-footer">
-        VeriSure enforces issuer sovereignty and cryptographic trust.
+        © VeriSure
     </footer>
 
     <script src="js/landing.js"></script>

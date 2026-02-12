@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Account Settings — VeriSure</title>
+
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <link rel="stylesheet" href="../assets/css/layout.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+
+<body>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="brand">VeriSure</div>
+            <nav class="side-links">
+                <a href="wallet.html">My Credentials</a>
+                <a href="./account.html" class="active">Account Settings</a>
+            </nav>
+            <div class="hr"></div>
+            <button class="btn" type="button" data-action="logout">Logout</button>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <h1>Account Settings</h1>
+                    <p>Your holder account details and security actions.</p>
+                </div>
+            </div>
+
+            <div id="banner"></div>
+
+            <section class="card">
+                <h3 style="margin:0 0 8px;">Profile</h3>
+                <div class="grid-2">
+                    <div class="kv">
+                        <div class="k">Email</div>
+                        <div class="v" id="aEmail">—</div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">Role</div>
+                        <div class="v" id="aRole">—</div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">Entity ID</div>
+                        <div class="v mono" id="aEntity">—</div>
+                    </div>
+                </div>
+            </section>
+
+            <div style="height:14px"></div>
+
+            <section class="card">
+                <h3 style="margin:0 0 8px;">Security</h3>
+                <div class="controls" style="gap:10px;">
+                    <a href="../reset-password.html" class="btn">Reset password</a>
+                    <button class="btn bad" type="button" data-action="logout">Logout</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script>
+        (function () {
+            const s = Session.get();
+            if (!s || s.role !== "holder") {
+                Session.clear();
+                location.href = "../login.html";
+                return;
+            }
+
+            const set = (id, v) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = String(v || "—");
+            };
+
+            set("aEmail", s.email);
+            set("aRole", s.role);
+            set("aEntity", s.entityId || "—");
+        })();
+    </script>
+</body>
+
+</html>

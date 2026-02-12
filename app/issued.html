@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="../assets/css/dashboard.css">
 </head>
 
-<body onload="protect();">
+<body>
     <div class="dashboard">
         <aside class="sidebar">
             <div class="brand">VeriSure</div>
@@ -24,7 +24,7 @@
                 <a href="./issuer-settings.html">Issuer Settings</a>
             </nav>
             <div class="hr"></div>
-            <button class="btn" type="button" onclick="Session.clear()">Logout</button>
+            <button class="btn" type="button" data-action="logout">Logout</button>
         </aside>
 
         <main class="main">
@@ -114,20 +114,25 @@
                 return '<span class="badge bad">Revoked</span>';
             }
 
+            function asAttr(v) {
+                return String(v ?? "").replace(/"/g, "&quot;");
+            }
+
             function actionButtons(c) {
                 const s = String(c.status || "").toLowerCase();
+                const idAttr = asAttr(c.id);
 
                 if (s === "active") {
                     return `
-                        <button class="btn xs warn" onclick="changeStatus('${c.id}','frozen')">Freeze</button>
-                        <button class="btn xs danger" onclick="changeStatus('${c.id}','revoked')">Revoke</button>
+                        <button class="btn xs warn" data-action="frozen" data-id="${idAttr}">Freeze</button>
+                        <button class="btn xs danger" data-action="revoked" data-id="${idAttr}">Revoke</button>
                     `;
                 }
 
                 if (s === "frozen") {
                     return `
-                        <button class="btn xs" onclick="changeStatus('${c.id}','active')">Unfreeze</button>
-                        <button class="btn xs danger" onclick="changeStatus('${c.id}','revoked')">Revoke</button>
+                        <button class="btn xs" data-action="active" data-id="${idAttr}">Unfreeze</button>
+                        <button class="btn xs danger" data-action="revoked" data-id="${idAttr}">Revoke</button>
                     `;
                 }
 
@@ -195,7 +200,23 @@
                 applyFilters();
             }
 
-            window.changeStatus = function (id, next) {
+            function actionLabel(next) {
+                if (next === "active") return "unfreeze";
+                return next;
+            }
+
+            function askReason(next) {
+                const reason = window.prompt(`Provide a reason to ${actionLabel(next)} this credential:`);
+                return String(reason || "").trim();
+            }
+
+            async function changeStatus(id, next) {
+                const reason = askReason(next);
+                if (!reason) {
+                    showBanner("error", "Reason is required.");
+                    return;
+                }
+
                 openConfirmModal({
                     title: "Confirm action",
                     message: `Change credential status to "${next}"?`,
@@ -205,7 +226,8 @@
                             action: "credential_status",
                             issuer_email: session.email,
                             credential_id: id,
-                            status: next
+                            status: next,
+                            reason
                         });
 
                         if (res && res.error) {
@@ -217,7 +239,13 @@
                         loadIssued();
                     }
                 });
-            };
+            }
+
+            rowsEl.addEventListener("click", (e) => {
+                const btn = e.target.closest("button[data-action][data-id]");
+                if (!btn) return;
+                changeStatus(btn.dataset.id, btn.dataset.action);
+            });
 
             searchEl.addEventListener("input", applyFilters);
             statusEl.addEventListener("change", applyFilters);

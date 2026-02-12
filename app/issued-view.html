@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="../assets/css/dashboard.css">
 </head>
 
-<body onload="protect();">
+<body>
     <div class="dashboard">
         <aside class="sidebar">
             <div class="brand">VeriSure</div>
@@ -24,7 +24,7 @@
                 <a href="./issuer-settings.html">Issuer Settings</a>
             </nav>
             <div class="hr"></div>
-            <button class="btn" type="button" onclick="Session.clear()">Logout</button>
+            <button class="btn" type="button" data-action="logout">Logout</button>
         </aside>
 
         <main class="main">
@@ -178,7 +178,7 @@
                 return new Promise((resolve) => {
                     openConfirmModal({
                         title,
-                        message: `
+                        messageHtml: `
                             <div style="display:grid; gap:10px;">
                                 <div>${intro}</div>
                                 <div>
